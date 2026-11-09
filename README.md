@@ -35,7 +35,7 @@ command**, and without the rest of SSN.
 
 ## Install
 
-1. Download **`VoiceStudio-OBS-Connector-0.0.5.zip`** from the [latest release](https://github.com/eikira/VoiceStudio-OBS-Connector/releases/latest) and unzip it.
+1. Download **`VoiceStudio-OBS-Connector-0.0.8.zip`** from the [latest release](https://github.com/eikira/VoiceStudio-OBS-Connector/releases/latest) and unzip it.
 2. Chrome -> `chrome://extensions` -> turn on **Developer mode** (top right) -> **Load unpacked** ->
    choose the unzipped folder (the one that contains `manifest.json`).
 3. Install and start the **[relay](https://github.com/eikira/VoiceStudio-OBS-Connector-Relay/releases/latest)**.
@@ -54,7 +54,7 @@ The extension is not on the Chrome Web Store, so it is installed this way.
 5. **Save**.
 6. **OBS:** Sources -> + -> **Browser** -> paste the **OBS Browser Source URL** from the settings page.
    Do not tick "Shutdown source when not visible".
-7. Open your chat. If a chat tab was already open when you installed the extension, refresh it (F5) once. The popup's **Chat** line shows whether it is listening.
+7. Open your chat. Chat tabs that are already open are picked up automatically. The popup's **Chat** line shows whether it is listening.
 8. Popup -> **Send test**.
 
 Limits: default 190 characters per message; optional cooldown per viewer (after a command is accepted,

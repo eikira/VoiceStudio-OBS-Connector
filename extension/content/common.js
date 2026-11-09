@@ -6,9 +6,6 @@
  */
 (function () {
   'use strict';
-  if (window.__vsCaptureLoaded) return;
-  window.__vsCaptureLoaded = true;
-
   var GRACE_MS = 3000;      // on first attach, ignore the chat history that loads right after
   var SETTLE_MS = 150;      // let the page finish rendering the message
   var DUPLICATE_MS = 3000;  // some chat add-ons render a message twice
@@ -32,6 +29,18 @@
       var seenIds = [];
       var recent = {};
       var dead = false;
+      // The newest copy of this script on the page owns the chat. Older copies (from before an
+      // extension reload, or injected twice) notice the changed marker and stop.
+      var token = Math.random().toString(36).slice(2);
+      var root = document.documentElement;
+      root.setAttribute('data-vs-capture', token);
+      var timers = [];
+
+      function stop() {
+        dead = true;
+        if (observer) observer.disconnect();
+        timers.forEach(clearInterval);
+      }
       var seenCount = 0;   // live chat messages noticed (any message, not only commands)
       var lastCommand = '';
 
@@ -40,8 +49,7 @@
         try {
           chrome.runtime.sendMessage(msg, function () { void chrome.runtime.lastError; });
         } catch (e) {
-          dead = true; // extension was reloaded; this old script stops quietly
-          if (observer) observer.disconnect();
+          stop(); // extension was reloaded; this old script stops quietly
         }
       }
 
@@ -133,15 +141,16 @@
       }
 
       // Chat pages are single-page apps: keep checking that we are attached to the live list.
-      setInterval(function () {
+      timers.push(setInterval(function () {
         if (dead) return;
+        if (root.getAttribute('data-vs-capture') !== token) { stop(); return; }
         if (bound && bound.isConnected) return; // still attached: nothing to look up
         var container = document.querySelector(opts.containerSelector);
         if (container === bound) return;
         attach(container);
-      }, POLL_MS);
+      }, POLL_MS));
 
-      setInterval(report, HEARTBEAT_MS);
+      timers.push(setInterval(function () { if (!dead) report(); }, HEARTBEAT_MS));
       report();
     }
   };

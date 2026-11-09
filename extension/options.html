@@ -25,7 +25,7 @@
     <p class="note">In OBS: Sources &rarr; + &rarr; Browser &rarr; paste this URL. No size needed; the page is invisible. Tick "Control audio via OBS" if you want it on its own mixer track.</p>
     <label for="relayUrl">Relay address</label>
     <input type="text" id="relayUrl" placeholder="http://127.0.0.1:8787">
-    <p class="note">The VoiceStudio OBS Connector Relay (separate download) must be running. Default is this PC on port 8787.</p>
+    <p class="note">The VoiceStudio OBS Connector Relay must be running. <a href="https://github.com/eikira/VoiceStudio-OBS-Connector-Relay/releases/latest" target="_blank" rel="noopener">Download the relay</a> (Windows, macOS, Linux). Default is this PC on port 8787.</p>
     <div class="status" id="relayStatus"></div>
     <div class="toolbar"><button class="small" id="checkRelay">Check now</button></div>
   </section>
@@ -58,12 +58,14 @@
         <p class="note">0.5 to 1.5. Each voice below can override it. 1.0 = normal.</p>
       </div>
     </div>
+    <p class="note"><b>VoiceStudio must be running</b> to load models and voices. VoiceStudio comes with different models (voice engines); they differ in sound, languages and voice cloning. <a href="https://voicestudio.sh/library" target="_blank" rel="noopener">See what each model does</a>.</p>
     <div class="status" id="vsStatus"></div>
   </section>
 
   <section>
     <h2>3. Commands and voices</h2>
     <p class="note" style="margin-top:0">Commands: max <b>8 characters</b>. A <b>!</b> is added in front automatically.</p>
+    <p class="note" style="margin-top:0"><b>VoiceStudio must be running</b> to load voices and models.</p>
     <div class="mappings" id="mappings">
       <div class="head"><span>Command</span><span>Voice</span><span>Speed</span><span>Model (optional)</span><span></span></div>
     </div>

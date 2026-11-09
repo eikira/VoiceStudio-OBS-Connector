@@ -1,14 +1,22 @@
 {
   "manifest_version": 3,
   "name": "VoiceStudio OBS Connector",
-  "version": "0.0.5",
+  "version": "0.0.8",
   "description": "Reads chat commands like !voice aloud with a different VoiceStudio voice per command, through an OBS browser source. Free and open source (GPL-3.0).",
   "permissions": [
-    "storage"
+    "storage",
+    "scripting"
   ],
   "host_permissions": [
     "http://127.0.0.1/*",
-    "http://localhost/*"
+    "http://localhost/*",
+    "https://www.twitch.tv/*",
+    "https://www.youtube.com/*",
+    "https://studio.youtube.com/*",
+    "https://rumble.com/*",
+    "https://www.rumble.com/*",
+    "https://kick.com/*",
+    "https://www.kick.com/*"
   ],
   "optional_host_permissions": [
     "http://*/*",

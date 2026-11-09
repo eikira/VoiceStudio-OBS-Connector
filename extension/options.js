@@ -137,7 +137,7 @@
     var bang = document.createElement('span');
     bang.className = 'bang'; bang.textContent = '!';
     var cmd = document.createElement('input');
-    cmd.type = 'text'; cmd.className = 'command'; cmd.placeholder = 'voice';
+    cmd.type = 'text'; cmd.className = 'command'; cmd.placeholder = 'command/name';
     cmd.value = m.command ? S.normalizeCommand(m.command) : '';
     cmdWrap.append(bang, cmd);
 
@@ -251,7 +251,7 @@
         }
       })
       .catch(function () {
-        setStatus($('relayStatus'), 'Relay not reachable. Start the VoiceStudio OBS Connector Relay, or fix the address.', 'bad');
+        setStatus($('relayStatus'), 'Relay not reachable. Start the relay (download: github.com/eikira/VoiceStudio-OBS-Connector-Relay), or fix the address.', 'bad');
       })
       .then(function () { clearTimeout(timer); });
   }
@@ -385,7 +385,7 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(S.buildPayload(cfg, result, { user: 'settings', platform: 'settings' }))
     }).catch(function () {
-      throw new Error('The relay is not reachable. Start the VoiceStudio OBS Connector Relay first.');
+      throw new Error('The relay is not reachable. Start it first (download: github.com/eikira/VoiceStudio-OBS-Connector-Relay).');
     }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (d) {
         if (!r.ok || !d.ok) throw new Error(d.error || 'The relay refused the test (HTTP ' + r.status + ').');
@@ -440,7 +440,7 @@
       $('removeCommand').checked = cfg.removeCommand;
       $('maxChars').value = cfg.maxChars;
       $('cooldown').value = cfg.cooldownSec;
-      (cfg.mappings.length ? cfg.mappings : [{ command: 'voice', voice: '' }]).forEach(addRow);
+      (cfg.mappings.length ? cfg.mappings : [{ command: '', voice: '' }]).forEach(addRow);
       refreshObsUrl();
       if (fresh) chrome.storage.local.set({ config: cfg });
       checkRelay();

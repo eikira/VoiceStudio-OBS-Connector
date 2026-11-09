@@ -43,3 +43,6 @@ body.popup { width: 330px; padding: 12px; }
 body.popup h1 { font-size: 15px; }
 body.popup .line { display: flex; justify-content: space-between; gap: 8px; margin: 6px 0; }
 body.popup .btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+input::placeholder { color: var(--muted); opacity: .75; }
+a { color: var(--accent); }
+[hidden] { display: none !important; }

@@ -2,6 +2,18 @@
 
 Short overview of what changed. Versions before 0.0.5 were private test versions.
 
+## 0.0.8
+- Settings and popup link to the relay download.
+- (0.0.6 and 0.0.7 are included; they were not released separately.)
+
+## 0.0.7
+- Settings: empty command field with a gray hint "command/name"; notes that VoiceStudio must be running to load voices and models; note and link about VoiceStudio models.
+- Popup: "Commands/Voices".
+
+## 0.0.6
+- Chat tabs that are already open are picked up automatically (no refresh after installing or reloading).
+- A message is never sent twice if two copies of the chat reader briefly overlap.
+
 ## 0.0.5
 - First public release.
 - Adds the free and open source notice (GPL-3.0).

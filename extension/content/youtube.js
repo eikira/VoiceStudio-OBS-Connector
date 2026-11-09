@@ -1,5 +1,5 @@
 /* YouTube live chat (the /live_chat page, which is also the iframe inside a stream page). */
-VSCapture.start({
+if (/^\/live_chat/.test(location.pathname)) VSCapture.start({
   platform: 'youtube',
   containerSelector: 'yt-live-chat-item-list-renderer #items',
   messageSelector: 'yt-live-chat-text-message-renderer',

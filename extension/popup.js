@@ -23,10 +23,12 @@
         .then(function (r) { return r.json(); })
         .then(function (d) {
           paint($('relay'), 'running', 'good');
+          $('relayHint').hidden = true;
           paint($('obs'), d.listeners > 0 ? 'connected' : 'not connected', d.listeners > 0 ? 'good' : 'muted');
         })
         .catch(function () {
           paint($('relay'), 'not reachable', 'bad');
+          $('relayHint').hidden = false;
           paint($('obs'), '-', 'muted');
         })
         .then(function () { clearTimeout(timer); });
@@ -48,7 +50,7 @@
         .filter(function (t) { return now - t.at < 45000; });
       if (!tabs.length) {
         paint($('chat'), 'not detected', 'bad');
-        $('chatHint').textContent = 'Open your chat page. If it was already open before the extension was installed or reloaded, refresh it (F5).';
+        $('chatHint').textContent = 'Open your chat page. If it is already open and still not detected, refresh it (F5).';
         return;
       }
       var allListening = tabs.every(function (t) { return t.listening; });

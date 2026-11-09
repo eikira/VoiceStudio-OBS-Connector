@@ -59,7 +59,20 @@ async function postToRelay(cfg, payload) {
   }
 }
 
+// The same message must not be sent twice (for example while an old and a new copy of the chat
+// reader briefly overlap).
+const recentChat = new Map();
+function isDuplicate(msg) {
+  const now = Date.now();
+  const key = [msg.platform, msg.user, msg.text].join('|');
+  recentChat.forEach((t, k) => { if (now - t > 3000) recentChat.delete(k); });
+  if (recentChat.has(key)) return true;
+  recentChat.set(key, now);
+  return false;
+}
+
 async function handleChat(msg) {
+  if (isDuplicate(msg)) return;
   const cfg = await getConfig();
   if (!cfg.enabled || !cfg.overlayId) return;
   const result = S.parse(msg.text, cfg.mappings, { removeCommand: cfg.removeCommand, maxChars: cfg.maxChars });
@@ -114,7 +127,23 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   return false;
 });
 
+// Chrome only adds content scripts to pages that load after the extension is installed or
+// reloaded. So that nobody has to refresh their chat tab, add the chat readers to the tabs that
+// are already open.
+async function injectIntoOpenTabs() {
+  const scripts = chrome.runtime.getManifest().content_scripts || [];
+  for (const cs of scripts) {
+    const hosts = Array.from(new Set(cs.matches.map((m) => (m.match(/^(https:\/\/[^/]+)\//) || [])[1]).filter(Boolean)));
+    let tabs = [];
+    try { tabs = await chrome.tabs.query({ url: hosts.map((h) => h + '/*') }); } catch (e) { continue; }
+    for (const t of tabs) {
+      chrome.scripting.executeScript({ target: { tabId: t.id, allFrames: !!cs.all_frames }, files: cs.js }).catch(() => {});
+    }
+  }
+}
+
 chrome.runtime.onInstalled.addListener(async () => {
+  injectIntoOpenTabs().catch(() => {});
   const cfg = await getConfig();
   if (!cfg.overlayId) {
     cfg.overlayId = S.randomId();
