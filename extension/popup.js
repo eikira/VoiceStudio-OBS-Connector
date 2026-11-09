@@ -74,7 +74,7 @@
   $('settings').addEventListener('click', function () { chrome.runtime.openOptionsPage(); window.close(); });
   $('copy').addEventListener('click', function () {
     if (!cfg || !cfg.overlayId) { paint($('msg'), 'Open Settings first.', 'status bad'); return; }
-    navigator.clipboard.writeText(S.overlayUrl(cfg)).then(function () { paint($('msg'), 'OBS URL copied.', 'status good'); });
+    navigator.clipboard.writeText(S.overlayUrl(cfg)).then(function () { paint($('msg'), 'URL copied.', 'status good'); });
   });
   $('test').addEventListener('click', function () {
     paint($('msg'), 'Sending...', 'status muted');
@@ -85,6 +85,19 @@
       refresh();
     });
   });
+
+  // ---- update notice (the check itself runs in the background, at most once a day) ----------
+  function showUpdate() {
+    chrome.storage.local.get(['update', 'config']).then(function (res) {
+      var u = res.update;
+      var on = !res.config || res.config.updateCheck !== false;
+      var show = on && u && S.newerThan(u.latest, chrome.runtime.getManifest().version);
+      $('updateBox').hidden = !show;
+      if (show) { $('updateVer').textContent = u.latest; $('updateLink').href = S.RELEASES_PAGE; }
+    });
+  }
+  chrome.runtime.sendMessage({ type: 'updatecheck' }, function () { void chrome.runtime.lastError; showUpdate(); });
+  showUpdate();
 
   $('version').textContent = chrome.runtime.getManifest().version;
   refresh();

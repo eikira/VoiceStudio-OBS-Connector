@@ -32,18 +32,32 @@ chat page --content script--> background.js (service worker) --POST /send--> Rel
 | Path | Role |
 |---|---|
 | `manifest.json` | MV3 manifest. Permissions are only `storage` and `scripting`. Host permissions: the 4 chat sites, `127.0.0.1`, `localhost`. |
-| `background.js` | Service worker. Loads config, applies command to voice mapping, de-duplicates, queues messages in order, sends them to the relay, injects content scripts into already-open tabs on install/update, records chat status. |
+| `background.js` | Service worker. Loads config, applies command to voice mapping, de-duplicates, queues messages in order, sends them to the relay, injects content scripts into already-open tabs on install/update, records chat status, runs the update check (`checkForUpdate`). |
 | `content/common.js` | `VSCapture`: shared capture logic (MutationObserver, history grace period, de-duplication, heartbeat). |
 | `content/twitch.js` `youtube.js` `rumble.js` `kick.js` | One file per site. Only site-specific selectors and parsing. |
-| `lib/shared.js` | Pure functions (command parsing, validation, URL building). Unit tested. |
+| `lib/shared.js` | Pure functions (command parsing, validation, URL building, version comparison `newerThan`) and the GitHub URLs. Unit tested. |
 | `options.html/js`, `popup.html/js`, `ui.css` | Settings page and toolbar popup. |
 | `tests/shared.test.js` | Unit tests. Run with `node --test` (Node 18+). Do not pass a directory. |
+
+## Updates (manual on purpose)
+
+- `checkForUpdate()` in `background.js` asks `https://api.github.com/repos/eikira/VoiceStudio-OBS-Connector/releases/latest` for the newest tag
+  (when Chrome starts, on install, and when the popup or Settings opens; at most once per 24 h, 30 min retry after an error; forced by "Check for updates now").
+  The result is stored in `chrome.storage.local` as `update` = `{checkedAt, latest, error}`. The popup and Settings only read it.
+- It can be switched off (`config.updateCheck`, default true). A forced check still works when it is off.
+- **No new permission:** the request relies on GitHub's API answering with a CORS `*` header. If GitHub ever stops doing that, add
+  `https://api.github.com/*` to `host_permissions` (Chrome will then ask users to approve it).
+- Never download or install anything from the check. Settings has a written "How to update" guide and the button **Show where this extension is installed**
+  (`chrome.tabs.create` to `chrome://extensions/?id=<id>`; Chrome shows the folder as "Source"). An extension cannot read its own folder path, and an updated extension cannot replace its own files.
+- Replacing the files in the **same folder** keeps the extension ID and so the user's settings; loading another folder gives a new ID and empty settings. Keep saying this in the docs.
+- Settings also reads the relay's `GET /info` (version, newer relay available) and has an **Open relay folder** button that calls the relay's `POST /open-folder`
+  with the header `X-Relay-Open: 1`. Extension pages may send that header; ordinary web pages cannot (the relay refuses the preflight). Do not weaken that.
 
 ## Design rules (keep these)
 
 - **Small and fast.** Plain JavaScript, no libraries, no build step, no bundler. Do not add dependencies.
 - **Minimal permissions.** Do not add permissions or host permissions without a strong reason.
-- **No network calls except** the relay and VoiceStudio addresses the user configured.
+- **No network calls except** the relay and VoiceStudio addresses the user configured, and the once-a-day update check to GitHub (which must stay switchable and documented in the README privacy section).
 - **GPL-3.0.** Keep the license, the copyright line (eikira) and the credit to Social Stream Ninja
   (inspiration only; no SSN code is included. The chat selectors were found by studying how chat pages are built).
   Do not copy code from other projects without checking their license.
@@ -78,6 +92,6 @@ These were fixed after real bugs. Test them again after any change in `content/`
 
 ## Releasing
 
-Raise the version in `manifest.json`, add a short entry to `CHANGELOG.md`, zip the contents of `extension/`
+Raise the version in `manifest.json` (and use the same number in the zip name), add a short entry to `CHANGELOG.md`, zip the contents of `extension/`
 as `VoiceStudio-OBS-Connector-<version>.zip`, and attach it to a new GitHub release with a matching tag.
 The changelog starts at 0.0.5, the first public version.

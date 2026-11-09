@@ -2,6 +2,14 @@
 
 Short overview of what changed. Versions before 0.0.5 were private test versions.
 
+## 0.0.9
+- **Update check:** once a day (and when Chrome starts) the extension asks GitHub which version is the newest and shows
+  "Update available" in the popup and in Settings. Nothing is installed automatically; Settings has a step-by-step "How to update".
+  The check can be switched off (Settings -> 5. Updates).
+- **Settings -> "Show where this extension is installed":** opens Chrome's details page of the extension, where the folder is listed as "Source".
+- **Settings -> "Open relay folder"** (needs relay 0.0.6) and the relay's version, with a notice when a newer relay exists.
+- Popup: "Copy OBS URL" is now "Copy URL".
+
 ## 0.0.8
 - Settings and popup link to the relay download.
 - (0.0.6 and 0.0.7 are included; they were not released separately.)

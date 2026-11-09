@@ -107,6 +107,42 @@ async function recordChatStatus(tabId, msg) {
   await chrome.storage.session.set({ chatTabs: map });
 }
 
+// ---- update check -------------------------------------------------------------------------
+// Asks GitHub which release is newest (public, no login, nothing about the user is sent) and stores
+// the answer. It only informs: the user installs the new version by hand. At most once a day.
+const UPDATE_EVERY = 24 * 3600 * 1000;
+let updating = null;
+
+async function checkForUpdate(force) {
+  const cfg = await getConfig();
+  if (!force && !cfg.updateCheck) return null;
+  const { update } = await chrome.storage.local.get('update');
+  if (!force && update && Date.now() - update.checkedAt < UPDATE_EVERY) return update;
+  if (updating) return updating;
+  updating = (async () => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    try {
+      const res = await fetch(S.UPDATE_API, { headers: { Accept: 'application/vnd.github+json' }, cache: 'no-store', signal: ctrl.signal });
+      if (!res.ok) throw new Error('GitHub answered ' + res.status);
+      const tag = String((await res.json()).tag_name || '');
+      if (!S.parseVersion(tag)) throw new Error('unexpected version');
+      const next = { checkedAt: Date.now(), latest: tag.replace(/^[vV]/, ''), error: '' };
+      await chrome.storage.local.set({ update: next });
+      return next;
+    } catch (e) {
+      // keep the last known answer, try again in about 30 minutes
+      const next = Object.assign({ latest: '' }, update || {}, { checkedAt: Date.now() - UPDATE_EVERY + 30 * 60 * 1000, error: e.name === 'AbortError' ? 'GitHub did not answer' : String(e.message || e) });
+      await chrome.storage.local.set({ update: next });
+      return next;
+    } finally {
+      clearTimeout(timer);
+      updating = null;
+    }
+  })();
+  return updating;
+}
+
 let chatQueue = Promise.resolve();
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -118,6 +154,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'chat') {
     // one at a time, in arrival order, so quick messages are spoken in the order they were written
     chatQueue = chatQueue.then(() => handleChat(msg)).then(() => sendResponse({ ok: true }), (e) => sendResponse({ ok: false, error: String(e) }));
+    return true;
+  }
+  if (msg.type === 'updatecheck') {
+    checkForUpdate(!!msg.force).then(() => sendResponse({ ok: true }), () => sendResponse({ ok: false }));
     return true;
   }
   if (msg.type === 'test') {
@@ -142,8 +182,11 @@ async function injectIntoOpenTabs() {
   }
 }
 
+chrome.runtime.onStartup.addListener(() => { checkForUpdate(false).catch(() => {}); });
+
 chrome.runtime.onInstalled.addListener(async () => {
   injectIntoOpenTabs().catch(() => {});
+  checkForUpdate(false).catch(() => {});
   const cfg = await getConfig();
   if (!cfg.overlayId) {
     cfg.overlayId = S.randomId();

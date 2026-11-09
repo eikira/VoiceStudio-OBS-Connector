@@ -46,3 +46,7 @@ body.popup .btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 input::placeholder { color: var(--muted); opacity: .75; }
 a { color: var(--accent); }
 [hidden] { display: none !important; }
+.update { border: 1px solid var(--accent); border-radius: 6px; padding: 6px 8px; margin: 6px 0; }
+ol.steps { margin: 6px 0 0 18px; padding: 0; }
+ol.steps li { margin: 3px 0; }
+code.path { word-break: break-all; }

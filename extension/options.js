@@ -209,7 +209,8 @@
         .filter(function (m) { return m.command || m.voice; }),
       removeCommand: $('removeCommand').checked,
       maxChars: Math.max(10, Math.min(2000, parseInt($('maxChars').value, 10) || S.DEFAULTS.maxChars)),
-      cooldownSec: Math.max(0, Math.min(3600, parseInt($('cooldown').value, 10) || 0))
+      cooldownSec: Math.max(0, Math.min(3600, parseInt($('cooldown').value, 10) || 0)),
+      updateCheck: $('updateCheck').checked
     };
   }
 
@@ -235,6 +236,38 @@
   }
 
   // ---- relay status -----------------------------------------------------------------------
+  // Relay 0.0.6 and newer tell their version and whether they know of a newer one. Older ones have no /info.
+  function showRelayVersion(relay) {
+    return fetch(relay + '/info').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      var el = $('relayVersion');
+      if (!d || !d.version) {
+        setStatus(el, 'This relay is older than 0.0.6. Please update it (download page: github.com/eikira/VoiceStudio-OBS-Connector-Relay/releases/latest).', 'muted');
+      } else if (d.updateAvailable) {
+        el.className = 'status bad';
+        el.textContent = 'Relay ' + d.version + '. A newer relay is available: ' + d.latest + '. ';
+        var a = document.createElement('a');
+        a.href = S.RELAY_RELEASES_PAGE; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Download';
+        el.appendChild(a);
+      } else {
+        setStatus(el, 'Relay version ' + d.version + '.', 'muted');
+      }
+    }).catch(function () { setStatus($('relayVersion'), '', 'muted'); });
+  }
+
+  function openRelayFolder() {
+    var relay = S.trimUrl($('relayUrl').value) || S.DEFAULTS.relayUrl;
+    var el = $('relayFolderStatus');
+    fetch(relay + '/open-folder', { method: 'POST', headers: { 'X-Relay-Open': '1' } })
+      .then(function (r) {
+        if (r.status === 404) { setStatus(el, 'Your relay is older than 0.0.6 and cannot do this. Please update it first.', 'bad'); return; }
+        return r.json().then(function (d) {
+          if (r.ok && d.ok) setStatus(el, 'Opened the relay folder on the computer where the relay runs: ' + d.path, 'good');
+          else setStatus(el, 'The relay could not open its folder (' + (d.error || r.status) + ').', 'bad');
+        });
+      })
+      .catch(function () { setStatus(el, 'The relay is not reachable. Start it first, or open the folder you unzipped it to.', 'bad'); });
+  }
+
   function checkRelay() {
     var relay = S.trimUrl($('relayUrl').value) || S.DEFAULTS.relayUrl;
     var ctrl = new AbortController();
@@ -250,7 +283,9 @@
           setStatus($('relayStatus'), 'Relay answered, but not as expected.', 'bad');
         }
       })
+      .then(function () { return showRelayVersion(relay); })
       .catch(function () {
+        setStatus($('relayVersion'), '', 'muted');
         setStatus($('relayStatus'), 'Relay not reachable. Start the relay (download: github.com/eikira/VoiceStudio-OBS-Connector-Relay), or fix the address.', 'bad');
       })
       .then(function () { clearTimeout(timer); });
@@ -440,6 +475,7 @@
       $('removeCommand').checked = cfg.removeCommand;
       $('maxChars').value = cfg.maxChars;
       $('cooldown').value = cfg.cooldownSec;
+      $('updateCheck').checked = cfg.updateCheck !== false;
       (cfg.mappings.length ? cfg.mappings : [{ command: '', voice: '' }]).forEach(addRow);
       refreshObsUrl();
       if (fresh) chrome.storage.local.set({ config: cfg });
@@ -466,6 +502,39 @@
     setStatus($('saveStatus'), 'New ID created. Click Save, then update the URL in OBS.', 'muted');
   });
   $('checkRelay').addEventListener('click', checkRelay);
+  $('openRelayFolder').addEventListener('click', openRelayFolder);
+
+  // ---- updates (the check itself runs in the background script, at most once a day) --------
+  function showUpdateStatus() {
+    chrome.storage.local.get('update').then(function (res) {
+      var u = res.update;
+      var cur = chrome.runtime.getManifest().version;
+      var el = $('updateStatus');
+      $('updatePage').href = S.RELEASES_PAGE;
+      if (!u || !u.latest) {
+        setStatus(el, (u && u.error ? 'Could not check: ' + u.error + '. ' : 'Not checked yet. ') + 'You have version ' + cur + '.', u && u.error ? 'bad' : 'muted');
+      } else if (S.newerThan(u.latest, cur)) {
+        setStatus(el, 'Update available: ' + u.latest + ' (you have ' + cur + '). See "How to update" below.', 'bad');
+      } else {
+        setStatus(el, 'You have the newest version (' + cur + ').', 'good');
+      }
+    });
+  }
+  $('checkUpdate').addEventListener('click', function () {
+    setStatus($('updateStatus'), 'Checking...', 'muted');
+    chrome.runtime.sendMessage({ type: 'updatecheck', force: true }, function () { void chrome.runtime.lastError; showUpdateStatus(); });
+  });
+  $('showWhere').addEventListener('click', function () {
+    chrome.tabs.create({ url: 'chrome://extensions/?id=' + chrome.runtime.id }).then(function () {
+      setStatus($('whereStatus'), 'Opened. Look for "Source" on that page.', 'good');
+    }, function () {
+      setStatus($('whereStatus'), 'Chrome did not open it. Type chrome://extensions in the address bar and click Details on this extension.', 'bad');
+    });
+  });
+  $('extId').textContent = chrome.runtime.id;
+  chrome.storage.onChanged.addListener(function (ch, area) { if (area === 'local' && ch.update) showUpdateStatus(); });
+  chrome.runtime.sendMessage({ type: 'updatecheck' }, function () { void chrome.runtime.lastError; showUpdateStatus(); });
+  showUpdateStatus();
   $('addRow').addEventListener('click', function () { addRow(); });
   $('loadVoices').addEventListener('click', loadVoices);
   $('loadModels').addEventListener('click', loadModels);

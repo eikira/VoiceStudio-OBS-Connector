@@ -35,12 +35,29 @@ command**, and without the rest of SSN.
 
 ## Install
 
-1. Download **`VoiceStudio-OBS-Connector-0.0.8.zip`** from the [latest release](https://github.com/eikira/VoiceStudio-OBS-Connector/releases/latest) and unzip it.
+1. Download **`VoiceStudio-OBS-Connector-0.0.9.zip`** from the [latest release](https://github.com/eikira/VoiceStudio-OBS-Connector/releases/latest) and unzip it.
 2. Chrome -> `chrome://extensions` -> turn on **Developer mode** (top right) -> **Load unpacked** ->
    choose the unzipped folder (the one that contains `manifest.json`).
 3. Install and start the **[relay](https://github.com/eikira/VoiceStudio-OBS-Connector-Relay/releases/latest)**.
 
-The extension is not on the Chrome Web Store, so it is installed this way.
+The extension is not on the Chrome Web Store, so it is installed this way. **Remember the folder you unzipped it to**:
+you need it again for updates (Settings can show you where it is).
+
+## Updating
+
+The extension tells you when a new version is out ("Update available" in the popup and in Settings), but **nothing is
+installed automatically**. You update by hand:
+
+1. Download the new zip from the [latest release](https://github.com/eikira/VoiceStudio-OBS-Connector/releases/latest) and unzip it.
+2. Open the extension's **Settings** (popup -> Settings), scroll to **5. Updates** and click **Show where this extension is installed**.
+   Chrome opens the extension's details page. The folder is listed there as **Source** (the full path, on Windows, macOS and Linux).
+   Without the button: type `chrome://extensions` in the address bar, turn on *Developer mode*, click *Details*, look at *Source*.
+3. Copy the new files into **that same folder** and overwrite the old ones. Use the same folder: a different folder
+   counts as a new extension and your settings would not come with it.
+4. On `chrome://extensions` click the **reload** icon (circular arrow) of the extension. Your settings are kept.
+
+The relay is updated separately (see its [README](https://github.com/eikira/VoiceStudio-OBS-Connector-Relay#updating)).
+Settings shows the relay's version and tells you if a newer one exists, and has an **Open relay folder** button.
 
 ## Set up
 
@@ -62,8 +79,11 @@ more commands from that viewer are ignored for N seconds).
 
 ## Privacy
 
-- Nothing is sent to any server of mine or anyone else's. The extension only talks to your relay and your
-  VoiceStudio.
+- Your chat, commands and settings are not sent to any server of mine or anyone else's. The extension talks to your relay and
+  your VoiceStudio.
+- **One exception, the update check:** when Chrome starts and when you open the popup or Settings (at most once a day) the extension asks
+  `api.github.com` which release is the newest. That is a public page; nothing about you is sent. GitHub sees your IP address like any
+  website you visit. You can switch it off in Settings -> 5. Updates.
 - Only chat messages that start with `!` are looked at further. Settings are stored in Chrome on your computer.
 - It needs access to the supported chat sites (to read chat) and to `127.0.0.1` / `localhost`
   (relay and VoiceStudio). Another VoiceStudio address is only contacted after you allow it.
@@ -73,6 +93,7 @@ more commands from that viewer are ignored for N seconds).
 - **Popup says Relay "not reachable":** start the relay. The address in settings must match its port (default 8787).
 - **Popup Chat line says "not detected":** open your chat page; if it is already open, refresh it (F5).
 - **Silence in OBS:** the Browser Source must show "connected" (popup: OBS page). Keep "Control audio via OBS" in mind for the mixer.
+- **"Open relay folder" does nothing:** the relay must be running and be version 0.0.6 or newer.
 - **A chat site changed its layout:** open an [issue](https://github.com/eikira/VoiceStudio-OBS-Connector/issues) and say which site.
 
 ## Develop

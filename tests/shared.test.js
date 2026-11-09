@@ -108,3 +108,16 @@ test('random ids are long, unique and URL-safe', () => {
   assert.match(a, /^[A-Za-z0-9]{20}$/);
   assert.notStrictEqual(a, b);
 });
+
+test('update check: version comparison', () => {
+  const S = require('../extension/lib/shared.js');
+  assert.strictEqual(S.newerThan('v0.0.10', '0.0.9'), true);
+  assert.strictEqual(S.newerThan('0.1.0', '0.0.9'), true);
+  assert.strictEqual(S.newerThan('0.0.9', '0.0.9'), false);
+  assert.strictEqual(S.newerThan('0.0.8', '0.0.9'), false);
+  assert.strictEqual(S.newerThan('1.0', '1.0.0'), false);
+  assert.strictEqual(S.newerThan('1.0-beta', '0.0.9'), false);
+  assert.strictEqual(S.newerThan('', '0.0.9'), false);
+  assert.strictEqual(S.newerThan('latest', '0.0.9'), false);
+  assert.strictEqual(S.DEFAULTS.updateCheck, true);
+});

@@ -17,7 +17,8 @@
     mappings: [], // [{ command, voice, speed, model }]  speed/model blank = use the defaults above
     removeCommand: true,
     maxChars: 190,
-    cooldownSec: 0
+    cooldownSec: 0,
+    updateCheck: true // once a day, ask GitHub whether a newer version exists (only tells you, installs nothing)
   };
 
   var SPEED_MIN = 0.5;
@@ -169,7 +170,44 @@
     }
   }
 
+  // ---- update check (GitHub releases) -------------------------------------------------------
+  var REPO = 'eikira/VoiceStudio-OBS-Connector';
+  var UPDATE_API = 'https://api.github.com/repos/' + REPO + '/releases/latest';
+  var RELEASES_PAGE = 'https://github.com/' + REPO + '/releases/latest';
+  var RELAY_RELEASES_PAGE = 'https://github.com/eikira/VoiceStudio-OBS-Connector-Relay/releases/latest';
+
+  // "v0.0.9" / "0.1" -> [0,0,9]; anything else (for example "1.0-beta") is refused.
+  function parseVersion(s) {
+    s = String(s || '').trim().replace(/^[vV]/, '');
+    if (!s) return null;
+    var out = [];
+    var parts = s.split('.');
+    for (var i = 0; i < parts.length; i++) {
+      if (!/^\d{1,7}$/.test(parts[i])) return null;
+      out.push(parseInt(parts[i], 10));
+    }
+    return out;
+  }
+
+  // True if `latest` is a higher version than `current`.
+  function newerThan(latest, current) {
+    var a = parseVersion(latest);
+    var b = parseVersion(current);
+    if (!a || !b) return false;
+    for (var i = 0; i < Math.max(a.length, b.length); i++) {
+      var x = a[i] || 0;
+      var y = b[i] || 0;
+      if (x !== y) return x > y;
+    }
+    return false;
+  }
+
   var api = {
+    UPDATE_API: UPDATE_API,
+    RELEASES_PAGE: RELEASES_PAGE,
+    RELAY_RELEASES_PAGE: RELAY_RELEASES_PAGE,
+    parseVersion: parseVersion,
+    newerThan: newerThan,
     DEFAULTS: DEFAULTS,
     SPEED_MIN: SPEED_MIN,
     SPEED_MAX: SPEED_MAX,
