@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>VoiceStudio OBS Connector</title>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body class="popup">
+  <h1>VoiceStudio OBS Connector</h1>
+  <label class="inline"><input type="checkbox" id="enabled"> Enabled</label>
+  <div class="line"><span class="muted">Relay</span><span id="relay">checking...</span></div>
+  <div class="line"><span class="muted">OBS page</span><span id="obs">-</span></div>
+  <div class="line"><span class="muted">Chat</span><span id="chat">-</span></div>
+  <div class="muted" id="chatHint" style="font-size:11px;margin-bottom:4px"></div>
+  <div class="line"><span class="muted">Commands</span><span id="cmds">-</span></div>
+  <div class="line"><span class="muted">Sent</span><span id="sent">0</span></div>
+  <div class="status bad" id="err"></div>
+  <div class="btns">
+    <button id="copy">Copy OBS URL</button>
+    <button id="test">Send test</button>
+    <button id="settings">Settings</button>
+  </div>
+  <div class="status" id="msg"></div>
+  <div class="muted" style="font-size:11px;margin-top:8px">Version <span id="version"></span> &middot; free and open source (GPL-3.0)</div>
+  <script src="lib/shared.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

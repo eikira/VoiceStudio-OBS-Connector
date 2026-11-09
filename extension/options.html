@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>VoiceStudio OBS Connector - Settings</title>
+<link rel="stylesheet" href="ui.css">
+</head>
+<body>
+<main>
+  <h1>VoiceStudio OBS Connector <span class="muted" style="font-size:13px;font-weight:400">version <span id="version"></span></span></h1>
+  <p class="sub">Chat commands like <b>!voice hello</b> are read aloud with the VoiceStudio voice you link to that command.</p>
+
+  <section>
+    <label class="inline"><input type="checkbox" id="enabled"> Extension enabled</label>
+  </section>
+
+  <section>
+    <h2>1. OBS browser source</h2>
+    <label for="obsUrl">Your OBS Browser Source URL</label>
+    <div class="row-line">
+      <input type="text" id="obsUrl" readonly>
+      <button id="copyUrl">Copy</button>
+      <button id="newId" title="Creates a new unique ID. The OBS URL will change.">New ID</button>
+    </div>
+    <p class="note">In OBS: Sources &rarr; + &rarr; Browser &rarr; paste this URL. No size needed; the page is invisible. Tick "Control audio via OBS" if you want it on its own mixer track.</p>
+    <label for="relayUrl">Relay address</label>
+    <input type="text" id="relayUrl" placeholder="http://127.0.0.1:8787">
+    <p class="note">The VoiceStudio OBS Connector Relay (separate download) must be running. Default is this PC on port 8787.</p>
+    <div class="status" id="relayStatus"></div>
+    <div class="toolbar"><button class="small" id="checkRelay">Check now</button></div>
+  </section>
+
+  <section>
+    <h2>2. VoiceStudio</h2>
+    <label for="vsUrl">VoiceStudio address</label>
+    <input type="text" id="vsUrl" placeholder="http://127.0.0.1:3900">
+    <p class="note"><b>Default is this PC.</b> If VoiceStudio runs on another computer in your network, enter that computer's address, for example <code>http://192.168.1.20:3900</code>. Chrome will ask permission to contact it. The relay must be able to reach that address too; if OBS sees it under a different address, add <code>&amp;endpoint=http://ADDRESS:3900</code> to the end of your OBS URL.</p>
+    <div class="grid2">
+      <div>
+        <label>Default model</label>
+        <div class="row-line">
+          <div id="modelPicker" style="flex:1"></div>
+          <button class="small" id="loadModels">Load</button>
+        </div>
+        <p class="note">"Load" asks VoiceStudio which models it has and fills this dropdown. Choose "Custom..." to type one yourself.</p>
+      </div>
+      <div>
+        <label for="format">Audio format</label>
+        <select id="format">
+          <option value="wav">wav</option>
+          <option value="mp3">mp3</option>
+          <option value="flac">flac</option>
+          <option value="opus">opus</option>
+          <option value="aac">aac</option>
+        </select>
+        <label for="speed">Default speed</label>
+        <select id="speed"></select>
+        <p class="note">0.5 to 1.5. Each voice below can override it. 1.0 = normal.</p>
+      </div>
+    </div>
+    <div class="status" id="vsStatus"></div>
+  </section>
+
+  <section>
+    <h2>3. Commands and voices</h2>
+    <p class="note" style="margin-top:0">Commands: max <b>8 characters</b>. A <b>!</b> is added in front automatically.</p>
+    <div class="mappings" id="mappings">
+      <div class="head"><span>Command</span><span>Voice</span><span>Speed</span><span>Model (optional)</span><span></span></div>
+    </div>
+    <div class="toolbar">
+      <button id="addRow">+ Add command</button>
+      <button id="loadVoices">Load voices from VoiceStudio</button>
+      <button id="addAllVoices">Add all loaded voices as commands</button>
+    </div>
+    <p class="note">"Default" uses the settings from section 2. Test plays a sample in OBS.</p>
+    <div class="status" id="voiceStatus"></div>
+  </section>
+
+  <section>
+    <h2>4. Behavior</h2>
+    <label class="inline"><input type="checkbox" id="removeCommand"> Don't read the command itself aloud</label>
+    <div class="grid2">
+      <div>
+        <label for="maxChars">Max characters per message</label>
+        <input type="number" id="maxChars" min="10" max="2000" step="10">
+        <p class="note">Longer messages are cut off after this many characters. Default 190.</p>
+      </div>
+      <div>
+        <label for="cooldown">Cooldown per viewer (seconds)</label>
+        <input type="number" id="cooldown" min="0" max="3600" step="1">
+        <p class="note">After a viewer's command is accepted, any further commands from that same viewer are ignored (not queued) for this many seconds. 0 = off. Applies per viewer name and platform, and also to mods.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="row-line"><button class="primary" id="save">Save</button><span class="status" id="saveStatus"></span></div>
+
+  <p class="note" style="text-align:center;margin-top:28px">VoiceStudio OBS Connector is free and open source software (GPL-3.0). Free to use, share and modify. Inspired by Social Stream Ninja.</p>
+</main>
+<script src="lib/shared.js"></script>
+<script src="options.js"></script>
+</body>
+</html>
