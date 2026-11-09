@@ -80,6 +80,16 @@ more commands from that viewer are ignored for N seconds).
 Plain JavaScript, no build step, no libraries. Load the `extension/` folder with *Load unpacked*.
 Unit tests: `node --test` (Node 18+, no installs).
 
+## Support the project
+
+This project is free and always will be. If it is useful to you and you would like to say thanks, you can:
+
+- Follow the channel and like the videos. It costs nothing and helps a lot.
+- Donate via [Ko-fi](https://ko-fi.com/V7V6175QA3), [Streamlabs](https://switzerlandplayit.com/tips) or [PayPal](https://www.paypal.com/donate?business=switzerland.playit@gmail.com&currency_code=USD)
+- Send something from the wishlists: [Amazon](https://www.amazon.de/hz/wishlist/ls/3HC3NSU1P8V0Q?ref_=wl_share) or [Steam](https://store.steampowered.com/wishlist/id/eikira/)
+
+Donations are optional and do not unlock anything. Every feature stays free for everybody.
+
 ## Free and open source
 
 Free to use, share and modify, under the **GNU General Public License v3.0** (see [LICENSE](LICENSE)).
