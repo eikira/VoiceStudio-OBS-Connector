@@ -109,14 +109,26 @@
 
     <h2 style="margin-top:16px">How to update</h2>
     <ol class="steps">
-      <li>Download the new zip from the download page above and unzip it.</li>
+      <li>Download the new zip from the download page above.</li>
       <li>Click <b>Show where this extension is installed</b> below. Chrome opens the details page of this extension. The folder is listed there as <b>Source</b>.</li>
-      <li>Copy the files from the new download into that folder and <b>overwrite the old files</b>. Use the same folder: another folder counts as a different extension and your settings would not come with it.</li>
+      <li>Unzip the new download so that its <b>VoiceStudio-OBS-Connector</b> folder <b>replaces the old one</b>: extract it into the folder that <i>contains</i> the old VoiceStudio-OBS-Connector folder and choose Replace (overwrite all). Or copy <b>everything inside</b> the new folder into the old one and <b>overwrite the old files</b>. Keep the same folder: another folder counts as a different extension and your settings would not come with it.</li>
       <li>On the Chrome extensions page, click the <b>reload</b> icon (circular arrow) of this extension. Your settings are kept.</li>
     </ol>
     <div class="toolbar"><button id="showWhere">Show where this extension is installed</button></div>
     <p class="note">Or open it yourself: type <code>chrome://extensions</code> in the address bar, switch on <b>Developer mode</b>, click <b>Details</b> on VoiceStudio OBS Connector and look for <b>Source</b>. It shows the full folder path on Windows, macOS and Linux. This extension's ID is <code id="extId"></code>.</p>
     <div class="status" id="whereStatus"></div>
+  </section>
+
+  <section id="backup">
+    <h2>6. Backup: export and import your settings</h2>
+    <p class="note" style="margin-top:0">Saves everything you set up (commands, voices, speed, models, addresses, options and the ID of your OBS URL) in <b>one small file</b>, and loads it back. Use it before you delete or move the extension folder, or to move to a new computer or browser. Chrome keeps the settings together with the extension, so a deleted extension loses them.</p>
+    <div class="toolbar">
+      <button id="exportSettings">Export settings to a file</button>
+      <button id="importSettings">Import settings from a file...</button>
+      <input type="file" id="importFile" accept=".json,application/json" hidden>
+    </div>
+    <p class="note"><b>Export</b> saves what you last saved (click Save first if you just changed something). <b>Import</b> fills this page with the settings from the file, replacing what is shown; check them, then click <b>Save</b> to keep them. The file contains your addresses and your OBS ID, so keep it private.</p>
+    <div class="status" id="backupStatus"></div>
   </section>
 
   <div class="row-line"><button class="primary" id="save">Save</button><span class="status" id="saveStatus"></span></div>

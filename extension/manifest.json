@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "VoiceStudio OBS Connector",
-  "version": "0.0.9",
+  "version": "0.1.0",
   "description": "Reads chat commands like !voice aloud with a different VoiceStudio voice per command, through an OBS browser source. Free and open source (GPL-3.0).",
   "permissions": [
     "storage",

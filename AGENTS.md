@@ -39,6 +39,16 @@ chat page --content script--> background.js (service worker) --POST /send--> Rel
 | `options.html/js`, `popup.html/js`, `ui.css` | Settings page and toolbar popup. |
 | `tests/shared.test.js` | Unit tests. Run with `node --test` (Node 18+). Do not pass a directory. |
 
+## Backup: export / import of settings
+
+- Settings -> 6. Backup. Pure logic is in `lib/shared.js` (`buildExport`, `parseImport`, `sanitizeConfig`, unit tested); the buttons are in `options.js`.
+- The file is JSON: `{ app: "VoiceStudio OBS Connector", kind: "settings", format: 1, extensionVersion, exportedAt, settings: {...} }`. `settings` is the whole config (including the OBS ID so the OBS URL survives a reinstall).
+  Never put stats, chat data, the update cache or anything else in it.
+- **Treat the file as untrusted input.** Import goes through `sanitizeConfig`: unknown keys dropped, URLs must be http(s), speeds/limits clamped, commands checked like the Save button does, at most 200 commands, files over 512 KB refused. The values are only ever put into form fields as text.
+- Import does **not** save. It fills the page and the user presses Save (this is also when Chrome may ask for permission for non-local addresses).
+- When a new setting is added to `DEFAULTS`: add it to `sanitizeConfig`, the export test and `fillForm`/`collect` in `options.js`. Older files without the key must still import (the default is used).
+  Raise `EXPORT_FORMAT` only for an incompatible change; newer formats are refused with a message, older ones must keep working.
+
 ## Updates (manual on purpose)
 
 - `checkForUpdate()` in `background.js` asks `https://api.github.com/repos/eikira/VoiceStudio-OBS-Connector/releases/latest` for the newest tag
@@ -92,6 +102,6 @@ These were fixed after real bugs. Test them again after any change in `content/`
 
 ## Releasing
 
-Raise the version in `manifest.json` (and use the same number in the zip name), add a short entry to `CHANGELOG.md`, zip the contents of `extension/`
-as `VoiceStudio-OBS-Connector-<version>.zip`, and attach it to a new GitHub release with a matching tag.
+Version numbers go in steps of ten: 0.0.9, 0.1.0, 0.1.1 ... 0.1.9, 0.2.0 (the update check compares the numbers part by part, so this is fine). Raise the version in `manifest.json` (and use the same number in the zip name), add a short entry to `CHANGELOG.md`, zip the contents of `extension/`
+as `VoiceStudio-OBS-Connector-<version>.zip`. **Inside the zip the folder is always called `VoiceStudio-OBS-Connector` (no version number)**, so an update replaces the old folder and keeps the same path, extension ID and user settings. Attach it to a new GitHub release with a matching tag.
 The changelog starts at 0.0.5, the first public version.

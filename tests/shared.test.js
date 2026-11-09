@@ -121,3 +121,55 @@ test('update check: version comparison', () => {
   assert.strictEqual(S.newerThan('latest', '0.0.9'), false);
   assert.strictEqual(S.DEFAULTS.updateCheck, true);
 });
+
+test('settings backup: export then import gives the same settings', () => {
+  const cfg = { enabled: true, relayUrl: 'http://127.0.0.1:8787/', overlayId: 'abcdefgh1234', voiceStudioUrl: 'http://192.168.1.20:3900', model: 'omnivoice', format: 'mp3', speed: 1.2,
+    mappings: [{ command: '!Hazed', voice: 'hazed', voiceName: 'Hazed', speed: '1.1', model: '' }, { command: 'mao', voice: 'mao-voice', speed: 1.5, model: 'tts-1' }],
+    removeCommand: false, maxChars: 250, cooldownSec: 7, updateCheck: false, stats: 'not exported' };
+  const doc = S.buildExport(cfg, '0.1.0');
+  assert.strictEqual(doc.app, 'VoiceStudio OBS Connector');
+  assert.strictEqual(doc.format, 1);
+  assert.strictEqual(doc.settings.stats, undefined);
+  const r = S.parseImport(JSON.stringify(doc), 'zzzzzzzzzz');
+  assert.strictEqual(r.ok, true);
+  assert.deepStrictEqual(r.warnings, []);
+  assert.strictEqual(r.config.overlayId, 'abcdefgh1234');
+  assert.strictEqual(r.config.relayUrl, 'http://127.0.0.1:8787');
+  assert.deepStrictEqual(r.config.mappings, [
+    { command: 'hazed', voice: 'hazed', voiceName: 'Hazed', speed: '1.1', model: '' },
+    { command: 'mao', voice: 'mao-voice', voiceName: '', speed: '1.5', model: 'tts-1' }]);
+  assert.strictEqual(r.config.updateCheck, false);
+  assert.strictEqual(r.config.removeCommand, false);
+  // a second round gives the same thing
+  assert.deepStrictEqual(S.parseImport(JSON.stringify(S.buildExport(r.config, '0.1.0')), 'x').config, r.config);
+});
+
+test('settings backup: refuses files that are not ours, accepts old files with missing keys', () => {
+  assert.strictEqual(S.parseImport('nope').ok, false);
+  assert.strictEqual(S.parseImport('{"a":1}').ok, false);
+  assert.strictEqual(S.parseImport('[]').ok, false);
+  assert.strictEqual(S.parseImport(JSON.stringify({ app: 'VoiceStudio OBS Connector', kind: 'settings', format: 99, settings: {} })).ok, false);
+  assert.strictEqual(S.parseImport('x'.repeat(S.MAX_IMPORT_BYTES + 1)).ok, false);
+  const r = S.parseImport(JSON.stringify({ app: 'VoiceStudio OBS Connector', kind: 'settings', format: 1, settings: { mappings: [{ command: 'a', voice: 'v' }] } }), 'keepkeepkeep');
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.config.overlayId, 'keepkeepkeep');
+  assert.strictEqual(r.config.voiceStudioUrl, 'http://127.0.0.1:3900');
+  assert.strictEqual(r.config.maxChars, 190);
+});
+
+test('settings backup: tampered values are cleaned, not trusted', () => {
+  const r = S.sanitizeConfig({ relayUrl: 'javascript:alert(1)', voiceStudioUrl: 'file:///etc/passwd', overlayId: '../x', model: 5, format: 'exe', speed: 99, maxChars: 1e9, cooldownSec: -3,
+    mappings: [{ command: 'toolongcmd9', voice: 'v' }, { command: 'ok', voice: 'v', speed: '0.01' }, { command: 'OK', voice: 'w' }, { command: 'x', voice: '' }, 7, null, { command: 'bad cmd!', voice: 'v' }], evil: true }, 'mine12345');
+  assert.strictEqual(r.config.relayUrl, 'http://127.0.0.1:8787');
+  assert.strictEqual(r.config.voiceStudioUrl, 'http://127.0.0.1:3900');
+  assert.strictEqual(r.config.overlayId, 'mine12345');
+  assert.strictEqual(r.config.format, 'wav');
+  assert.strictEqual(r.config.speed, 1.5);
+  assert.strictEqual(r.config.maxChars, 2000);
+  assert.strictEqual(r.config.cooldownSec, 0);
+  assert.deepStrictEqual(r.config.mappings.map((m) => m.command + ':' + m.speed), ['ok:0.5']);
+  assert.strictEqual(r.config.evil, undefined);
+  assert.ok(r.warnings.length >= 5);
+  const many = S.sanitizeConfig({ mappings: Array.from({ length: 300 }, (_, i) => ({ command: 'c' + i, voice: 'v' })) });
+  assert.strictEqual(many.config.mappings.length, 200);
+});

@@ -451,33 +451,80 @@
     });
   }
 
+  // ---- fill the page from a config (used at startup and by "Import") ---------------------
+  function fillForm(cfg) {
+    overlayId = cfg.overlayId;
+    $('enabled').checked = cfg.enabled;
+    $('relayUrl').value = cfg.relayUrl;
+    $('vsUrl').value = cfg.voiceStudioUrl;
+    $('modelPicker').textContent = '';
+    modelPicker = Picker({ value: cfg.model, placeholder: 'model name', source: function () { return knownModels; } });
+    $('modelPicker').appendChild(modelPicker.el);
+    $('format').value = cfg.format;
+    var sp = S.parseSpeed(cfg.speed);
+    $('speed').value = (sp === null ? 1 : sp).toFixed(1);
+    $('removeCommand').checked = cfg.removeCommand;
+    $('maxChars').value = cfg.maxChars;
+    $('cooldown').value = cfg.cooldownSec;
+    $('updateCheck').checked = cfg.updateCheck !== false;
+    document.querySelectorAll('#mappings .row').forEach(function (r) { r.remove(); });
+    (cfg.mappings.length ? cfg.mappings : [{ command: '', voice: '' }]).forEach(addRow);
+    refreshObsUrl();
+    refreshPickers();
+  }
+
+  // ---- backup: export / import ------------------------------------------------------------
+  function exportSettings() {
+    chrome.storage.local.get('config').then(function (res) {
+      var cfg = Object.assign({}, S.DEFAULTS, res.config || {});
+      if (!cfg.overlayId) cfg.overlayId = overlayId;
+      var doc = S.buildExport(cfg, chrome.runtime.getManifest().version);
+      var blob = new Blob([JSON.stringify(doc, null, 2) + '\n'], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var d = new Date();
+      var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'voicestudio-obs-connector-settings-' + d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+      setStatus($('backupStatus'), 'Exported ' + doc.settings.mappings.length + ' command(s). Chrome saved the file in your Downloads folder (or asked where). Keep it private: it contains your OBS ID.', 'good');
+    }).catch(function (e) {
+      setStatus($('backupStatus'), 'Could not export: ' + e.message, 'bad');
+    });
+  }
+
+  function importSettings(file) {
+    if (!file) return;
+    if (file.size > S.MAX_IMPORT_BYTES) { setStatus($('backupStatus'), 'The file is too big to be a settings file.', 'bad'); return; }
+    file.text().then(function (text) {
+      var r = S.parseImport(text, overlayId);
+      if (!r.ok) { setStatus($('backupStatus'), r.error, 'bad'); return; }
+      fillForm(r.config);
+      var msg = 'Loaded ' + r.config.mappings.length + ' command(s) from the file. Check them, then click Save to keep them.';
+      if (r.warnings.length) msg += ' Notes: ' + r.warnings.join(' ');
+      setStatus($('backupStatus'), msg, r.warnings.length ? 'muted' : 'good');
+      setStatus($('saveStatus'), 'Imported, not saved yet. Click Save.', 'bad');
+    }, function () {
+      setStatus($('backupStatus'), 'The file could not be read.', 'bad');
+    });
+  }
+
   // ---- startup ----------------------------------------------------------------------------
   function load() {
+    S.speedChoices().forEach(function (v) {
+      var o = document.createElement('option');
+      o.value = v;
+      o.textContent = v === '1.0' ? '1.0 (normal)' : v;
+      $('speed').appendChild(o);
+    });
     chrome.storage.local.get('config').then(function (res) {
       var cfg = Object.assign({}, S.DEFAULTS, res.config || {});
       var fresh = !cfg.overlayId;
       if (fresh) cfg.overlayId = S.randomId();
-      overlayId = cfg.overlayId;
-      $('enabled').checked = cfg.enabled;
-      $('relayUrl').value = cfg.relayUrl;
-      $('vsUrl').value = cfg.voiceStudioUrl;
-      modelPicker = Picker({ value: cfg.model, placeholder: 'model name', source: function () { return knownModels; } });
-      $('modelPicker').appendChild(modelPicker.el);
-      $('format').value = cfg.format;
-      S.speedChoices().forEach(function (v) {
-        var o = document.createElement('option');
-        o.value = v;
-        o.textContent = v === '1.0' ? '1.0 (normal)' : v;
-        $('speed').appendChild(o);
-      });
-      var sp = S.parseSpeed(cfg.speed);
-      $('speed').value = (sp === null ? 1 : sp).toFixed(1);
-      $('removeCommand').checked = cfg.removeCommand;
-      $('maxChars').value = cfg.maxChars;
-      $('cooldown').value = cfg.cooldownSec;
-      $('updateCheck').checked = cfg.updateCheck !== false;
-      (cfg.mappings.length ? cfg.mappings : [{ command: '', voice: '' }]).forEach(addRow);
-      refreshObsUrl();
+      fillForm(cfg);
       if (fresh) chrome.storage.local.set({ config: cfg });
       checkRelay();
       // Quietly load the voice names so rows show names right away (needs no click).
@@ -536,6 +583,13 @@
   chrome.runtime.sendMessage({ type: 'updatecheck' }, function () { void chrome.runtime.lastError; showUpdateStatus(); });
   showUpdateStatus();
   $('addRow').addEventListener('click', function () { addRow(); });
+  $('exportSettings').addEventListener('click', exportSettings);
+  $('importSettings').addEventListener('click', function () { $('importFile').click(); });
+  $('importFile').addEventListener('change', function () {
+    var f = $('importFile').files[0];
+    $('importFile').value = '';
+    importSettings(f);
+  });
   $('loadVoices').addEventListener('click', loadVoices);
   $('loadModels').addEventListener('click', loadModels);
   $('addAllVoices').addEventListener('click', addAllVoices);

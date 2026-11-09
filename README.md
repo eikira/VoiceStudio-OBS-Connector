@@ -35,7 +35,7 @@ command**, and without the rest of SSN.
 
 ## Install
 
-1. Download **`VoiceStudio-OBS-Connector-0.0.9.zip`** from the [latest release](https://github.com/eikira/VoiceStudio-OBS-Connector/releases/latest) and unzip it.
+1. Download **`VoiceStudio-OBS-Connector-0.0.9.zip`** from the [latest release](https://github.com/eikira/VoiceStudio-OBS-Connector/releases/latest) and unzip it. You get a folder named `VoiceStudio-OBS-Connector` (the same name for every version). Put it somewhere permanent, for example in Documents: Chrome uses the files in that folder directly, so do not delete or move it.
 2. Chrome -> `chrome://extensions` -> turn on **Developer mode** (top right) -> **Load unpacked** ->
    choose the unzipped folder (the one that contains `manifest.json`).
 3. Install and start the **[relay](https://github.com/eikira/VoiceStudio-OBS-Connector-Relay/releases/latest)**.
@@ -48,13 +48,15 @@ you need it again for updates (Settings can show you where it is).
 The extension tells you when a new version is out ("Update available" in the popup and in Settings), but **nothing is
 installed automatically**. You update by hand:
 
-1. Download the new zip from the [latest release](https://github.com/eikira/VoiceStudio-OBS-Connector/releases/latest) and unzip it.
+1. Download the new zip from the [latest release](https://github.com/eikira/VoiceStudio-OBS-Connector/releases/latest).
 2. Open the extension's **Settings** (popup -> Settings), scroll to **5. Updates** and click **Show where this extension is installed**.
    Chrome opens the extension's details page. The folder is listed there as **Source** (the full path, on Windows, macOS and Linux).
    Without the button: type `chrome://extensions` in the address bar, turn on *Developer mode*, click *Details*, look at *Source*.
-3. Copy the new files into **that same folder** and overwrite the old ones. Use the same folder: a different folder
+3. Unzip the new download so that its `VoiceStudio-OBS-Connector` folder **replaces the old one**: extract it into the folder that *contains* the old `VoiceStudio-OBS-Connector` folder and choose *Replace*. Or copy **everything inside** the new folder into the old one and overwrite the old files. Keep the same folder: a different folder
    counts as a new extension and your settings would not come with it.
 4. On `chrome://extensions` click the **reload** icon (circular arrow) of the extension. Your settings are kept.
+
+Your settings are kept as long as you keep the same folder. To be safe, **export them first** (see "Backup and restore" below).
 
 The relay is updated separately (see its [README](https://github.com/eikira/VoiceStudio-OBS-Connector-Relay#updating)).
 Settings shows the relay's version and tells you if a newer one exists, and has an **Open relay folder** button.
@@ -76,6 +78,15 @@ Settings shows the relay's version and tells you if a newer one exists, and has 
 
 Limits: default 190 characters per message; optional cooldown per viewer (after a command is accepted,
 more commands from that viewer are ignored for N seconds).
+
+## Backup and restore your settings
+
+Chrome stores the settings together with the extension. If you delete or move the extension folder, or load it from a new folder, the settings are gone.
+So: **Settings -> 6. Backup -> Export settings to a file**. You get one small file with everything: commands, voices, speed and model per command,
+addresses, options and the ID of your OBS URL.
+
+To restore (after reinstalling, on a new computer or browser): **Settings -> 6. Backup -> Import settings from a file**, check what was loaded, then click **Save**.
+Because the OBS ID is in the file, your old OBS Browser Source URL keeps working. Export saves what you last saved. Keep the file private (it contains your addresses and OBS ID).
 
 ## Privacy
 

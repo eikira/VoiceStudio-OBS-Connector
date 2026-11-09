@@ -202,7 +202,110 @@
     return false;
   }
 
+  // ---- settings backup: export / import --------------------------------------------------
+  var EXPORT_APP = 'VoiceStudio OBS Connector';
+  var EXPORT_FORMAT = 1;
+  var MAX_IMPORT_BYTES = 512 * 1024;
+  var MAX_MAPPINGS = 200;
+  var FORMATS = ['wav', 'mp3', 'flac', 'opus', 'aac'];
+
+  function shortText(v, max) {
+    return typeof v === 'string' && v.trim().length > 0 && v.trim().length <= max ? v.trim() : '';
+  }
+
+  function clampInt(v, min, max, fallback) {
+    var n = typeof v === 'number' ? v : parseInt(v, 10);
+    return isFinite(n) ? Math.max(min, Math.min(max, Math.round(n))) : fallback;
+  }
+
+  // Turns anything (an old saved config, or the content of an imported file) into a clean config.
+  // Unknown keys are dropped, wrong values fall back to the defaults. `keepId` is used when the
+  // input has no valid OBS ID. Returns { config, warnings }.
+  function sanitizeConfig(raw, keepId) {
+    var warnings = [];
+    raw = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+    var out = {};
+    out.enabled = typeof raw.enabled === 'boolean' ? raw.enabled : DEFAULTS.enabled;
+    ['relayUrl', 'voiceStudioUrl'].forEach(function (k) {
+      var u = typeof raw[k] === 'string' ? trimUrl(raw[k]) : '';
+      if (u && u.length <= 300 && isValidHttpUrl(u)) out[k] = u;
+      else {
+        out[k] = DEFAULTS[k];
+        if (raw[k] !== undefined) warnings.push((k === 'relayUrl' ? 'Relay address' : 'VoiceStudio address') + ' in the file was not valid; the default was used.');
+      }
+    });
+    if (typeof raw.overlayId === 'string' && /^[A-Za-z0-9_-]{8,64}$/.test(raw.overlayId)) out.overlayId = raw.overlayId;
+    else {
+      out.overlayId = keepId || '';
+      if (raw.overlayId !== undefined) warnings.push('The OBS ID in the file was not valid; the current one was kept.');
+    }
+    out.model = shortText(raw.model, 100) || DEFAULTS.model;
+    out.format = FORMATS.indexOf(raw.format) !== -1 ? raw.format : DEFAULTS.format;
+    var sp = parseSpeed(raw.speed);
+    out.speed = sp === null ? DEFAULTS.speed : sp;
+    out.removeCommand = typeof raw.removeCommand === 'boolean' ? raw.removeCommand : DEFAULTS.removeCommand;
+    out.maxChars = clampInt(raw.maxChars, 10, 2000, DEFAULTS.maxChars);
+    out.cooldownSec = clampInt(raw.cooldownSec, 0, 3600, DEFAULTS.cooldownSec);
+    out.updateCheck = typeof raw.updateCheck === 'boolean' ? raw.updateCheck : DEFAULTS.updateCheck;
+
+    out.mappings = [];
+    var list = Array.isArray(raw.mappings) ? raw.mappings : [];
+    if (list.length > MAX_MAPPINGS) warnings.push('Only the first ' + MAX_MAPPINGS + ' commands were taken.');
+    var seen = {};
+    list.slice(0, MAX_MAPPINGS).forEach(function (m) {
+      if (!m || typeof m !== 'object') return;
+      var c = normalizeCommand(typeof m.command === 'string' ? m.command : '');
+      var problem = commandProblem(c);
+      if (problem) { warnings.push('Skipped a command: ' + problem); return; }
+      if (seen[c]) { warnings.push('Skipped "!' + c + '": it was listed twice.'); return; }
+      var voice = shortText(m.voice, 200);
+      if (!voice) { warnings.push('Skipped "!' + c + '": it has no voice.'); return; }
+      seen[c] = true;
+      var s = parseSpeed(m.speed);
+      out.mappings.push({
+        command: c,
+        voice: voice,
+        voiceName: shortText(m.voiceName, 200),
+        speed: s === null ? '' : s.toFixed(1),
+        model: shortText(m.model, 100)
+      });
+    });
+    return { config: out, warnings: warnings };
+  }
+
+  // The file content for "Export settings".
+  function buildExport(cfg, extensionVersion) {
+    var clean = sanitizeConfig(cfg, cfg && cfg.overlayId).config;
+    return {
+      app: EXPORT_APP,
+      kind: 'settings',
+      format: EXPORT_FORMAT,
+      extensionVersion: String(extensionVersion || ''),
+      exportedAt: new Date().toISOString(),
+      settings: clean
+    };
+  }
+
+  // Reads the text of a chosen file. Returns { ok:true, config, warnings } or { ok:false, error }.
+  function parseImport(text, keepId) {
+    if (typeof text !== 'string' || text.length > MAX_IMPORT_BYTES) return { ok: false, error: 'The file is too big to be a settings file.' };
+    var doc;
+    try { doc = JSON.parse(text); } catch (e) { return { ok: false, error: 'This is not a settings file (it could not be read).' }; }
+    if (!doc || typeof doc !== 'object' || doc.app !== EXPORT_APP || doc.kind !== 'settings' || !doc.settings || typeof doc.settings !== 'object') {
+      return { ok: false, error: 'This file was not made by VoiceStudio OBS Connector "Export settings".' };
+    }
+    if (typeof doc.format !== 'number' || doc.format > EXPORT_FORMAT) {
+      return { ok: false, error: 'This file was made by a newer version of the extension. Update the extension first.' };
+    }
+    var r = sanitizeConfig(doc.settings, keepId);
+    return { ok: true, config: r.config, warnings: r.warnings };
+  }
+
   var api = {
+    sanitizeConfig: sanitizeConfig,
+    buildExport: buildExport,
+    parseImport: parseImport,
+    MAX_IMPORT_BYTES: MAX_IMPORT_BYTES,
     UPDATE_API: UPDATE_API,
     RELEASES_PAGE: RELEASES_PAGE,
     RELAY_RELEASES_PAGE: RELAY_RELEASES_PAGE,

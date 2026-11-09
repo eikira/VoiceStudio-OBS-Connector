@@ -2,6 +2,10 @@
 
 Short overview of what changed. Versions before 0.0.5 were private test versions.
 
+## 0.1.0
+- **Backup:** Settings -> 6. Backup. "Export settings to a file" saves all your settings (commands, voices, speed, models, addresses, options and your OBS URL ID) in one small file; "Import settings from a file" loads it back (check, then Save). Useful when the extension folder was deleted, or on a new computer.
+- The zip now unpacks to a folder called `VoiceStudio-OBS-Connector` (no version number), so an update can simply replace the old folder.
+
 ## 0.0.9
 - **Update check:** once a day (and when Chrome starts) the extension asks GitHub which version is the newest and shows
   "Update available" in the popup and in Settings. Nothing is installed automatically; Settings has a step-by-step "How to update".
