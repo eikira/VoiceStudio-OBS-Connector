@@ -196,7 +196,7 @@
   }
 
   // ---- read the form ----------------------------------------------------------------------
-  // ---- section 5: read all chat ------------------------------------------------------------
+  // ---- section 4: read all chat ------------------------------------------------------------
   var allVoicePicker = null, allNamePicker = null, poolSel = {}, poolNames = {};
 
   function renderPool() {
@@ -309,8 +309,8 @@
       seen[m.command] = true;
     }
     if (cfg.readAll) {
-      if (cfg.allVoiceMode === 'fixed' && !cfg.allVoice) return 'Read all chat: choose the fixed voice (section 5).';
-      if (cfg.allVoiceMode !== 'fixed' && !cfg.allVoices.length) return 'Read all chat: tick at least one voice for the randomizer (section 5).';
+      if (cfg.allVoiceMode === 'fixed' && !cfg.allVoice) return 'Read all chat: choose the fixed voice (section 4).';
+      if (cfg.allVoiceMode !== 'fixed' && !cfg.allVoices.length) return 'Read all chat: tick at least one voice for the randomizer (section 4).';
     }
     return '';
   }

@@ -82,7 +82,7 @@ more commands from that viewer are ignored for N seconds).
 
 ## Read all chat (optional)
 
-Settings -> **5. Read all chat**. When on, every chat line is read aloud, not only commands. Lines that start with `!` stay commands.
+Settings -> **4. Read all chat**. When on, every chat line is read aloud, not only commands. Lines that start with `!` stay commands.
 
 - **Voices:** one fixed voice, a **random voice for every message**, or a **random voice per chatter** that each chatter keeps for the session (until you close the browser or press "Reset chatter voices"). You tick which voices the randomizer may use.
 - **"Paul says: ..."**: optional. The name is made easier to say (`xX_paul_1234` becomes "xX paul"). You can give "Paul says" its **own voice**; the relay then prepares both parts and plays them one after the other. Optionally the name is skipped when the same chatter writes again right away.

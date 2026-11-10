@@ -82,25 +82,8 @@
     <div class="status" id="voiceStatus"></div>
   </section>
 
-  <section>
-    <h2>4. Behavior</h2>
-    <label class="inline"><input type="checkbox" id="removeCommand"> Don't read the command itself aloud</label>
-    <div class="grid2">
-      <div>
-        <label for="maxChars">Max characters per message</label>
-        <input type="number" id="maxChars" min="10" max="2000" step="10">
-        <p class="note">Longer messages are cut off after this many characters. Default 190.</p>
-      </div>
-      <div>
-        <label for="cooldown">Cooldown per viewer (seconds)</label>
-        <input type="number" id="cooldown" min="0" max="3600" step="1">
-        <p class="note">After a viewer's command is accepted, any further commands from that same viewer are ignored (not queued) for this many seconds. 0 = off. Applies per viewer name and platform, and also to mods.</p>
-      </div>
-    </div>
-  </section>
-
   <section id="readall">
-    <h2>5. Read all chat (optional)</h2>
+    <h2>4. Read all chat (optional)</h2>
     <label class="inline"><input type="checkbox" id="readAll"> Read every chat line aloud, not only commands</label>
     <p class="note" style="margin-top:0">Lines starting with <b>!</b> are still commands. Needs relay 0.0.7 or newer. Chat lines are read with the voice settings below; commands keep their own voices.</p>
 
@@ -137,6 +120,23 @@
       <div><label for="maxQueue">Max waiting chat lines</label><input type="number" id="maxQueue" min="1" max="100" step="1"><p class="note">When more are waiting, the oldest are dropped.</p></div>
     </div>
     <p class="note">Everything typed in chat gets spoken on your stream: use blocked words, ignored names and a cooldown, and consider your platform's rules.</p>
+  </section>
+
+  <section>
+    <h2>5. Behavior</h2>
+    <label class="inline"><input type="checkbox" id="removeCommand"> Don't read the command itself aloud</label>
+    <div class="grid2">
+      <div>
+        <label for="maxChars">Max characters per message</label>
+        <input type="number" id="maxChars" min="10" max="2000" step="10">
+        <p class="note">Longer messages are cut off after this many characters. Default 190.</p>
+      </div>
+      <div>
+        <label for="cooldown">Cooldown per viewer (seconds)</label>
+        <input type="number" id="cooldown" min="0" max="3600" step="1">
+        <p class="note">After a viewer's command is accepted, any further commands from that same viewer are ignored (not queued) for this many seconds. 0 = off. Applies per viewer name and platform, and also to mods.</p>
+      </div>
+    </div>
   </section>
 
   <section id="updates">
