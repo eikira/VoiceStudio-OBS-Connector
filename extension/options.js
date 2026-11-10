@@ -86,6 +86,7 @@
   function refreshPickers() {
     pickers = pickers.filter(function (p) { return p.el.isConnected; });
     pickers.forEach(function (p) { p.refresh(); });
+    if ($('pool') && typeof renderPool === 'function') renderPool();
   }
 
   // Speed dropdown: only 0.5 ... 1.5 in steps of 0.1 (plus an optional "default" choice).
@@ -195,9 +196,89 @@
   }
 
   // ---- read the form ----------------------------------------------------------------------
+  // ---- section 7: read all chat ------------------------------------------------------------
+  var allVoicePicker = null, allNamePicker = null, poolSel = {}, poolNames = {};
+
+  function renderPool() {
+    var box = $('pool');
+    box.textContent = '';
+    var list = voices.slice();
+    Object.keys(poolSel).forEach(function (id) {
+      if (!list.some(function (v) { return v.id === id; })) list.push({ id: id, name: poolNames[id] || id });
+    });
+    if (!list.length) { box.textContent = 'No voices loaded yet.'; return; }
+    list.forEach(function (v) {
+      var l = document.createElement('label');
+      l.className = 'inline';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = !!poolSel[v.id];
+      cb.addEventListener('change', function () { if (cb.checked) { poolSel[v.id] = true; poolNames[v.id] = v.name || ''; } else delete poolSel[v.id]; });
+      l.append(cb, document.createTextNode(v.name || v.id));
+      box.appendChild(l);
+    });
+  }
+  function setAllPool(on) {
+    voices.forEach(function (v) { if (on) { poolSel[v.id] = true; poolNames[v.id] = v.name || ''; } else delete poolSel[v.id]; });
+    if (!on) poolSel = {};
+    renderPool();
+  }
+  function allMode() {
+    var r = document.querySelector('input[name=allMode]:checked');
+    return r ? r.value : 'fixed';
+  }
+  function syncAllUi() {
+    var m = allMode();
+    $('allVoiceBox').hidden = m !== 'fixed';
+    $('allPoolBox').hidden = m === 'fixed';
+    $('nameBox').hidden = !$('allSayName').checked;
+  }
+  function fillReadAll(cfg) {
+    $('readAll').checked = !!cfg.readAll;
+    var r = document.querySelector('input[name=allMode][value=' + cfg.allVoiceMode + ']');
+    (r || document.querySelector('input[name=allMode][value=fixed]')).checked = true;
+    $('allVoicePicker').textContent = '';
+    allVoicePicker = Picker({ value: cfg.allVoice, fallbackName: cfg.allVoiceName, placeholder: 'voice name / profile ID', blankLabel: '- choose a voice -', source: function () { return voices; } });
+    $('allVoicePicker').appendChild(allVoicePicker.el);
+    $('allNameVoicePicker').textContent = '';
+    allNamePicker = Picker({ value: cfg.allNameVoice, fallbackName: cfg.allNameVoiceName, placeholder: 'voice name / profile ID', blankLabel: 'same as the line', source: function () { return voices; } });
+    $('allNameVoicePicker').appendChild(allNamePicker.el);
+    poolSel = {}; poolNames = {};
+    (cfg.allVoices || []).forEach(function (v) { poolSel[v.id] = true; poolNames[v.id] = v.name || ''; });
+    renderPool();
+    $('allSayName').checked = !!cfg.allSayName;
+    $('allSkipRepeatName').checked = cfg.allSkipRepeatName !== false;
+    $('allIgnoreLinks').checked = cfg.allIgnoreLinks !== false;
+    $('allIgnoreBang').checked = cfg.allIgnoreBang !== false;
+    $('ignoredNames').value = cfg.ignoredNames || '';
+    $('blockedWords').value = cfg.blockedWords || '';
+    $('allCooldown').value = cfg.allCooldownSec;
+    $('maxQueue').value = cfg.maxQueue;
+    syncAllUi();
+  }
+  function collectReadAll() {
+    var pool = Object.keys(poolSel).map(function (id) { return { id: id, name: poolNames[id] || '' }; });
+    return {
+      readAll: $('readAll').checked,
+      allVoiceMode: allMode(),
+      allVoice: allVoicePicker.get(),
+      allVoiceName: allVoicePicker.getName(),
+      allVoices: pool,
+      allSayName: $('allSayName').checked,
+      allNameVoice: allNamePicker.get(),
+      allNameVoiceName: allNamePicker.getName(),
+      allSkipRepeatName: $('allSkipRepeatName').checked,
+      allIgnoreLinks: $('allIgnoreLinks').checked,
+      allIgnoreBang: $('allIgnoreBang').checked,
+      ignoredNames: $('ignoredNames').value,
+      blockedWords: $('blockedWords').value,
+      allCooldownSec: Math.max(0, Math.min(3600, parseInt($('allCooldown').value, 10) || 0)),
+      maxQueue: Math.max(1, Math.min(100, parseInt($('maxQueue').value, 10) || S.DEFAULTS.maxQueue))
+    };
+  }
+
   function collect() {
     var speed = S.parseSpeed($('speed').value);
-    return {
+    return Object.assign({
       enabled: $('enabled').checked,
       relayUrl: S.trimUrl($('relayUrl').value) || S.DEFAULTS.relayUrl,
       overlayId: overlayId,
@@ -211,7 +292,7 @@
       maxChars: Math.max(10, Math.min(2000, parseInt($('maxChars').value, 10) || S.DEFAULTS.maxChars)),
       cooldownSec: Math.max(0, Math.min(3600, parseInt($('cooldown').value, 10) || 0)),
       updateCheck: $('updateCheck').checked
-    };
+    }, collectReadAll());
   }
 
   function validate(cfg) {
@@ -226,6 +307,10 @@
       if (!m.voice) return 'Command !' + m.command + ' has no voice.';
       if (seen[m.command]) return 'Command !' + m.command + ' is listed twice.';
       seen[m.command] = true;
+    }
+    if (cfg.readAll) {
+      if (cfg.allVoiceMode === 'fixed' && !cfg.allVoice) return 'Read all chat: choose the fixed voice (section 7).';
+      if (cfg.allVoiceMode !== 'fixed' && !cfg.allVoices.length) return 'Read all chat: tick at least one voice for the randomizer (section 7).';
     }
     return '';
   }
@@ -415,12 +500,18 @@
       spoken: 'This is a test' + (m.command ? ' of the command !' + m.command : '') + '.'
     };
     say('Sending...');
-    fetch(S.trimUrl(cfg.relayUrl) + '/send?id=' + encodeURIComponent(cfg.overlayId), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(S.buildPayload(cfg, result, { user: 'settings', platform: 'settings' }))
-    }).catch(function () {
-      throw new Error('The relay is not reachable. Start it first (download: github.com/eikira/VoiceStudio-OBS-Connector-Relay).');
+    // The extension refuses to speak with a missing or too old relay: this test is refused too.
+    new Promise(function (resolve) {
+      chrome.runtime.sendMessage({ type: 'relaycheck' }, function (res) { void chrome.runtime.lastError; resolve(res && res.gate); });
+    }).then(function (gate) {
+      if (gate && gate.ok === false) throw new Error(S.relayGateMessage(gate));
+      return fetch(S.trimUrl(cfg.relayUrl) + '/send?id=' + encodeURIComponent(cfg.overlayId), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(S.buildPayload(cfg, result, { user: 'settings', platform: 'settings' }))
+      }).catch(function () {
+        throw new Error('The relay is not reachable. Start it first (download: github.com/eikira/VoiceStudio-OBS-Connector-Relay).');
+      });
     }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (d) {
         if (!r.ok || !d.ok) throw new Error(d.error || 'The relay refused the test (HTTP ' + r.status + ').');
@@ -469,6 +560,7 @@
     $('updateCheck').checked = cfg.updateCheck !== false;
     document.querySelectorAll('#mappings .row').forEach(function (r) { r.remove(); });
     (cfg.mappings.length ? cfg.mappings : [{ command: '', voice: '' }]).forEach(addRow);
+    fillReadAll(cfg);
     refreshObsUrl();
     refreshPickers();
   }
@@ -594,6 +686,24 @@
   $('loadModels').addEventListener('click', loadModels);
   $('addAllVoices').addEventListener('click', addAllVoices);
   $('save').addEventListener('click', save);
+  document.querySelectorAll('input[name=allMode]').forEach(function (r) { r.addEventListener('change', syncAllUi); });
+  $('allSayName').addEventListener('change', syncAllUi);
+  $('poolAll').addEventListener('click', function () { setAllPool(true); });
+  $('poolNone').addEventListener('click', function () { setAllPool(false); });
+  $('resetChatterVoices').addEventListener('click', function () {
+    chrome.runtime.sendMessage({ type: 'resetvoices' }, function () { void chrome.runtime.lastError; setStatus($('saveStatus'), 'Chatter voices reset.', 'good'); });
+  });
+  function showGate() {
+    chrome.storage.session.get('relayGate').then(function (r) {
+      var g = r.relayGate, bad = g && g.ok === false;
+      $('gate').hidden = !bad;
+      if (bad) { $('gateText').textContent = 'NOT WORKING. ' + S.relayGateMessage(g); $('gateLink').href = S.RELAY_RELEASES_PAGE; }
+    });
+  }
+  chrome.storage.onChanged.addListener(function (ch, area) { if (area === 'session' && ch.relayGate) showGate(); });
+  showGate();
+  chrome.runtime.sendMessage({ type: 'relaycheck' }, function () { void chrome.runtime.lastError; });
+  setInterval(function () { chrome.runtime.sendMessage({ type: 'relaycheck' }, function () { void chrome.runtime.lastError; }); }, 8000);
   setInterval(checkRelay, 8000);
   load();
 })();

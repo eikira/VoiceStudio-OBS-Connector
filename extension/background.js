@@ -31,6 +31,44 @@ async function cooldownOk(key, seconds) {
   return true;
 }
 
+// ---- the relay must be new enough --------------------------------------------------------
+// Version 0.1.1 and newer need relay 0.0.7 or newer (two-voice messages, chat lines). If the relay
+// is missing or too old the extension refuses to work: nothing is sent, the icon shows a red "!"
+// and the popup and the settings say why.
+let gate = { ok: null, at: 0, url: '' };
+
+async function relayReady(cfg, force) {
+  const url = S.trimUrl(cfg.relayUrl);
+  const now = Date.now();
+  if (!force && gate.ok !== null && gate.url === url && now - gate.at < (gate.ok ? 15000 : 3000)) return gate.ok;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 2500);
+  let next;
+  try {
+    const res = await fetch(url + '/info', { cache: 'no-store', signal: ctrl.signal });
+    const info = res.ok ? await res.json().catch(() => null) : null;
+    next = S.checkRelayInfo(info);
+  } catch (e) {
+    next = { ok: false, reason: 'down', version: '', error: e.name === 'AbortError' ? 'no answer' : 'connection refused' };
+  } finally {
+    clearTimeout(timer);
+  }
+  next.at = Date.now();
+  next.url = url;
+  const changed = gate.ok !== next.ok;
+  gate = next;
+  await chrome.storage.session.set({ relayGate: next });
+  if (!next.ok) {
+    chrome.action.setBadgeBackgroundColor({ color: '#c0392b' });
+    chrome.action.setBadgeText({ text: '!' });
+    chrome.action.setTitle({ title: 'VoiceStudio OBS Connector: ' + S.relayGateMessage(next) });
+  } else if (changed) {
+    chrome.action.setBadgeText({ text: '' });
+    chrome.action.setTitle({ title: 'VoiceStudio OBS Connector' });
+  }
+  return next.ok;
+}
+
 async function postToRelay(cfg, payload) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 4000);
@@ -75,16 +113,45 @@ async function handleChat(msg) {
   if (isDuplicate(msg)) return;
   const cfg = await getConfig();
   if (!cfg.enabled || !cfg.overlayId) return;
+  if (S.isIgnoredName(cfg, msg.user)) return; // completely ignored (bots and so on)
   const result = S.parse(msg.text, cfg.mappings, { removeCommand: cfg.removeCommand, maxChars: cfg.maxChars });
-  if (!result.match) return;
-  const who = String(msg.platform || '') + ':' + String(msg.user || '').toLowerCase();
-  if (!(await cooldownOk(who, cfg.cooldownSec))) return;
-  const payload = S.buildPayload(cfg, result, { user: msg.user, platform: msg.platform });
-  await postToRelay(cfg, payload);
+  const who = S.chatterKey(msg.platform, msg.user);
+
+  if (result.match) {
+    if (!(await relayReady(cfg))) return;
+    if (!(await cooldownOk(who, cfg.cooldownSec))) return;
+    await postToRelay(cfg, S.buildPayload(cfg, result, { user: msg.user, platform: msg.platform }));
+    return;
+  }
+
+  // ---- read all chat ----
+  if (!cfg.readAll) return;
+  const line = S.allLine(cfg, msg.text);
+  if (!line.ok) return;
+  if (!(await relayReady(cfg))) return;
+  if (!(await cooldownOk('all:' + who, cfg.allCooldownSec))) return;
+  const { chatterVoices, lastSpeaker } = await chrome.storage.session.get(['chatterVoices', 'lastSpeaker']);
+  const assigned = chatterVoices || {};
+  const pick = S.pickAllVoice(cfg, who, assigned);
+  if (!pick.voice) {
+    await saveStats({ lastError: 'Read all chat: choose a voice in the settings.' });
+    return;
+  }
+  if (pick.assign) {
+    assigned[who] = pick.assign;
+    const keys = Object.keys(assigned);
+    if (keys.length > 5000) delete assigned[keys[0]];
+    await chrome.storage.session.set({ chatterVoices: assigned });
+  }
+  const now = Date.now();
+  const withName = S.needsName(cfg, who, lastSpeaker, now);
+  await chrome.storage.session.set({ lastSpeaker: { key: who, at: now } });
+  await postToRelay(cfg, S.buildChatPayload(cfg, line.text, pick.voice, { user: msg.user, platform: msg.platform }, withName));
 }
 
 async function handleTest() {
   const cfg = await getConfig();
+  if (!(await relayReady(cfg, true))) return { ok: false, error: S.relayGateMessage(gate) };
   const mapping = (cfg.mappings || []).find((m) => m.command && m.voice);
   if (!mapping) return { ok: false, error: 'Add a command and voice first.' };
   const result = { mapping, command: S.normalizeCommand(mapping.command), spoken: 'This is a test of the command !' + S.normalizeCommand(mapping.command) + '.' };
@@ -160,6 +227,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     checkForUpdate(!!msg.force).then(() => sendResponse({ ok: true }), () => sendResponse({ ok: false }));
     return true;
   }
+  if (msg.type === 'relaycheck') {
+    getConfig().then((cfg) => relayReady(cfg, true)).then(() => sendResponse({ ok: true, gate }), () => sendResponse({ ok: false }));
+    return true;
+  }
+  if (msg.type === 'resetvoices') {
+    chrome.storage.session.remove(['chatterVoices', 'lastSpeaker']).then(() => sendResponse({ ok: true }), () => sendResponse({ ok: false }));
+    return true;
+  }
   if (msg.type === 'test') {
     handleTest().then(sendResponse, (e) => sendResponse({ ok: false, error: String(e) }));
     return true;
@@ -182,11 +257,15 @@ async function injectIntoOpenTabs() {
   }
 }
 
-chrome.runtime.onStartup.addListener(() => { checkForUpdate(false).catch(() => {}); });
+chrome.runtime.onStartup.addListener(() => {
+  checkForUpdate(false).catch(() => {});
+  getConfig().then((cfg) => relayReady(cfg, true)).catch(() => {});
+});
 
 chrome.runtime.onInstalled.addListener(async () => {
   injectIntoOpenTabs().catch(() => {});
   checkForUpdate(false).catch(() => {});
+  getConfig().then((cfg) => relayReady(cfg, true)).catch(() => {});
   const cfg = await getConfig();
   if (!cfg.overlayId) {
     cfg.overlayId = S.randomId();

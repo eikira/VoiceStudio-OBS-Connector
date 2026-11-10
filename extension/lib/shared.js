@@ -18,7 +18,23 @@
     removeCommand: true,
     maxChars: 190,
     cooldownSec: 0,
-    updateCheck: true // once a day, ask GitHub whether a newer version exists (only tells you, installs nothing)
+    updateCheck: true, // once a day, ask GitHub whether a newer version exists (only tells you, installs nothing)
+    // ---- read all chat (not only commands) ----
+    readAll: false,
+    allVoiceMode: 'fixed',   // 'fixed' | 'random' (new voice every line) | 'perChatter' (each chatter keeps one voice)
+    allVoice: '',
+    allVoiceName: '',
+    allVoices: [],           // the voices the random modes choose from: [{ id, name }]
+    allSayName: false,       // say "Paul says" before the line
+    allNameVoice: '',        // voice for the name part; blank = same voice as the line
+    allNameVoiceName: '',
+    allSkipRepeatName: true, // do not repeat the name when the same chatter writes again right after
+    allIgnoreLinks: true,
+    allIgnoreBang: true,     // ignore lines that start with "!" (other bots' commands)
+    allCooldownSec: 10,      // one line per chatter in this time
+    maxQueue: 5,             // how many chat lines may wait in OBS; the oldest waiting one is dropped
+    ignoredNames: 'Nightbot\nStreamElements\nStreamlabs\nMoobot\nFossabot\nWizebot',
+    blockedWords: ''
   };
 
   var SPEED_MIN = 0.5;
@@ -247,6 +263,20 @@
     out.maxChars = clampInt(raw.maxChars, 10, 2000, DEFAULTS.maxChars);
     out.cooldownSec = clampInt(raw.cooldownSec, 0, 3600, DEFAULTS.cooldownSec);
     out.updateCheck = typeof raw.updateCheck === 'boolean' ? raw.updateCheck : DEFAULTS.updateCheck;
+    ['readAll', 'allSayName', 'allSkipRepeatName', 'allIgnoreLinks', 'allIgnoreBang'].forEach(function (k) {
+      out[k] = typeof raw[k] === 'boolean' ? raw[k] : DEFAULTS[k];
+    });
+    out.allVoiceMode = ALL_MODES.indexOf(raw.allVoiceMode) !== -1 ? raw.allVoiceMode : DEFAULTS.allVoiceMode;
+    ['allVoice', 'allVoiceName', 'allNameVoice', 'allNameVoiceName'].forEach(function (k) { out[k] = shortText(raw[k], 200); });
+    out.allVoices = [];
+    (Array.isArray(raw.allVoices) ? raw.allVoices : []).slice(0, 100).forEach(function (v) {
+      var id = v && shortText(v.id, 200);
+      if (id && !out.allVoices.some(function (x) { return x.id === id; })) out.allVoices.push({ id: id, name: shortText(v.name, 200) });
+    });
+    out.allCooldownSec = clampInt(raw.allCooldownSec, 0, 3600, DEFAULTS.allCooldownSec);
+    out.maxQueue = clampInt(raw.maxQueue, 1, 100, DEFAULTS.maxQueue);
+    out.ignoredNames = typeof raw.ignoredNames === 'string' ? raw.ignoredNames.slice(0, 5000) : DEFAULTS.ignoredNames;
+    out.blockedWords = typeof raw.blockedWords === 'string' ? raw.blockedWords.slice(0, 5000) : DEFAULTS.blockedWords;
 
     out.mappings = [];
     var list = Array.isArray(raw.mappings) ? raw.mappings : [];
@@ -301,7 +331,145 @@
     return { ok: true, config: r.config, warnings: r.warnings };
   }
 
+  // ---- read all chat ------------------------------------------------------------------------
+  var ALL_MODES = ['fixed', 'random', 'perChatter'];
+  var RELAY_MIN_VERSION = '0.0.7';
+  var RELAY_MIN_PROTOCOL = 2;
+  var URL_RE = /(?:https?:\/\/|www\.)\S+|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|net|org|io|gg|tv|co|me|ly|xyz|de|ch|uk|us|ru|fm|app|dev|gl|link|cc)\b(?:\/\S*)?/i;
+  var EMOJI_RE = /[\p{Extended_Pictographic}\uFE0F\u200D\u20E3\u{1F3FB}-\u{1F3FF}\u{1F1E6}-\u{1F1FF}\u{E0020}-\u{E007F}]/gu;
+
+  // A list typed into a text box: one entry per line (commas and semicolons work too).
+  function splitList(text) {
+    return String(text || '').split(/[\n,;]+/).map(function (x) { return x.trim(); }).filter(Boolean);
+  }
+
+  function isIgnoredName(cfg, user) {
+    var u = String(user || '').trim().replace(/^@/, '').toLowerCase();
+    if (!u) return false;
+    return splitList(cfg.ignoredNames).some(function (n) { return n.replace(/^@/, '').toLowerCase() === u; });
+  }
+
+  function hasBlockedWord(cfg, text) {
+    var words = splitList(cfg.blockedWords).slice(0, 300);
+    for (var i = 0; i < words.length; i++) {
+      var esc = words[i].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      if (new RegExp('(?<![\\p{L}\\p{N}])' + esc + '(?![\\p{L}\\p{N}])', 'iu').test(text)) return true;
+    }
+    return false;
+  }
+
+  // Decides whether a chat line may be read aloud and cleans it. Returns { ok, text } or { ok:false, reason }.
+  function allLine(cfg, text) {
+    var t = cleanText(text);
+    if (!t) return { ok: false, reason: 'empty' };
+    if (cfg.allIgnoreBang && t.charAt(0) === '!') return { ok: false, reason: 'bang' };
+    if (cfg.allIgnoreLinks && URL_RE.test(t)) return { ok: false, reason: 'link' };
+    if (hasBlockedWord(cfg, t)) return { ok: false, reason: 'blocked-word' };
+    t = cleanText(t.replace(EMOJI_RE, ' '));
+    if (!/[\p{L}\p{N}]/u.test(t)) return { ok: false, reason: 'nothing-to-read' };
+    var max = cfg.maxChars > 0 ? cfg.maxChars : DEFAULTS.maxChars;
+    return { ok: true, text: truncate(t, max) };
+  }
+
+  function chatterKey(platform, user) {
+    return String(platform || '') + ':' + String(user || '').toLowerCase();
+  }
+
+  function poolIds(cfg) {
+    return (cfg.allVoices || []).map(function (v) { return v && v.id; }).filter(Boolean);
+  }
+
+  // Which voice reads this line. `assigned` is the map chatter -> voice of this browser session.
+  // Returns { voice, assign } where assign is a voice to remember for the chatter (or undefined).
+  function pickAllVoice(cfg, key, assigned, rnd) {
+    rnd = rnd || Math.random;
+    var pool = poolIds(cfg);
+    if (cfg.allVoiceMode === 'fixed' || !pool.length) return { voice: cfg.allVoice || '' };
+    function randomFrom(list) { return list[Math.min(list.length - 1, Math.floor(rnd() * list.length))]; }
+    if (cfg.allVoiceMode === 'random') return { voice: randomFrom(pool) };
+    var current = assigned && assigned[key];
+    if (current && pool.indexOf(current) !== -1) return { voice: current };
+    // new chatter: take one of the voices that are used by the fewest chatters, so chatters sound different
+    var counts = {};
+    pool.forEach(function (v) { counts[v] = 0; });
+    Object.keys(assigned || {}).forEach(function (k) { if (counts[assigned[k]] !== undefined) counts[assigned[k]]++; });
+    var least = Math.min.apply(null, pool.map(function (v) { return counts[v]; }));
+    var v = randomFrom(pool.filter(function (x) { return counts[x] === least; }));
+    return { voice: v, assign: v };
+  }
+
+  // "xX_paul_1234" -> "xX paul": easier to pronounce.
+  function spokenName(user) {
+    var n = String(user || '').trim().replace(/^@/, '');
+    var c = n.replace(/[_\-.]+/g, ' ').replace(/\s*\d{3,}\s*$/, '').replace(/\s+/g, ' ').trim();
+    return Array.from(c || n).slice(0, 30).join('');
+  }
+
+  // Say the name unless the same chatter was also the last one (within two minutes).
+  function needsName(cfg, key, last, now) {
+    if (!cfg.allSayName) return false;
+    if (cfg.allSkipRepeatName && last && last.key === key && now - last.at < 120000) return false;
+    return true;
+  }
+
+  function buildChatPayload(cfg, spoken, voice, meta, withName) {
+    meta = meta || {};
+    var body = speechBody(cfg, { voice: voice, model: '', speed: '' }, spoken);
+    var payload = {
+      endpoint: speechEndpoint(cfg),
+      model: body.model,
+      voice: body.voice,
+      format: body.response_format,
+      text: body.input,
+      user: meta.user || '',
+      platform: meta.platform || '',
+      command: '',
+      kind: 'chat',
+      maxQueue: clampInt(cfg.maxQueue, 1, 100, DEFAULTS.maxQueue)
+    };
+    if (typeof body.speed === 'number') payload.speed = body.speed;
+    if (withName) {
+      var introText = spokenName(meta.user) + ' says';
+      if (cfg.allNameVoice && cfg.allNameVoice !== voice) {
+        var ib = speechBody(cfg, { voice: cfg.allNameVoice, model: '', speed: '' }, introText);
+        payload.intro = { text: ib.input, voice: ib.voice, model: ib.model };
+        if (typeof ib.speed === 'number') payload.intro.speed = ib.speed;
+      } else {
+        payload.text = introText + ': ' + payload.text; // same voice: one clip is enough
+      }
+    }
+    return payload;
+  }
+
+  // What the relay answered to GET /info (null if it could not be read) -> { ok, reason, version }.
+  // reason: 'old' (older than 0.0.7 or no /info at all). 'down' is set by the caller when nothing answered.
+  function checkRelayInfo(info) {
+    var version = info && typeof info.version === 'string' ? info.version : '';
+    if (info && typeof info.protocol === 'number' && info.protocol >= RELAY_MIN_PROTOCOL) return { ok: true, reason: '', version: version };
+    return { ok: false, reason: 'old', version: version };
+  }
+
+  function relayGateMessage(gate) {
+    if (!gate || gate.ok) return '';
+    if (gate.reason === 'old') {
+      return 'Your relay' + (gate.version ? ' (version ' + gate.version + ')' : '') + ' is too old. This extension needs relay ' + RELAY_MIN_VERSION + ' or newer and will not speak anything until you update it.';
+    }
+    return 'The relay is not running or not reachable (' + (gate.error || 'no answer') + '). This extension needs relay ' + RELAY_MIN_VERSION + ' or newer running and will not speak anything until it is.';
+  }
+
   var api = {
+    RELAY_MIN_VERSION: RELAY_MIN_VERSION,
+    RELAY_MIN_PROTOCOL: RELAY_MIN_PROTOCOL,
+    splitList: splitList,
+    isIgnoredName: isIgnoredName,
+    allLine: allLine,
+    chatterKey: chatterKey,
+    pickAllVoice: pickAllVoice,
+    spokenName: spokenName,
+    needsName: needsName,
+    buildChatPayload: buildChatPayload,
+    checkRelayInfo: checkRelayInfo,
+    relayGateMessage: relayGateMessage,
     sanitizeConfig: sanitizeConfig,
     buildExport: buildExport,
     parseImport: parseImport,

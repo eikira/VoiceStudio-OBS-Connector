@@ -10,7 +10,7 @@ A Chrome extension that **reads stream chat commands aloud with your own VoiceSt
 Viewers type a command and some text. The extension picks up only messages that start with one of
 your commands, sends the text to [VoiceStudio](https://voicestudio.sh) (which runs on your own
 computer), and the voice is played in your stream through an OBS Browser Source. Every command can have
-its own voice, speed and model. Everything else in chat is ignored.
+its own voice, speed and model. Optionally it can also **read every chat line** (see below); by default everything else in chat is ignored.
 
 Works like the TTS of Social Stream Ninja, but with **any number of VoiceStudio voices, each on its own
 command**, and without the rest of SSN.
@@ -18,7 +18,8 @@ command**, and without the rest of SSN.
 ## You need three things
 
 1. **This extension** (Chrome).
-2. **The relay**: a small background program that carries the speech to OBS.
+2. **The relay, version 0.0.7 or newer**: a small background program that carries the speech to OBS.
+   **This extension refuses to work without it** (an older or missing relay gives a red notice in the popup and a red "!" on the icon; nothing is spoken).
    **[Download the VoiceStudio OBS Connector Relay](https://github.com/eikira/VoiceStudio-OBS-Connector-Relay/releases/latest)** (Windows, macOS, Linux).
 3. **[VoiceStudio](https://voicestudio.sh)** running with its OpenAI-compatible speech API
    (default `http://127.0.0.1:3900`).
@@ -30,7 +31,7 @@ command**, and without the rest of SSN.
 | **Browser** | Google Chrome (other Chromium browsers such as Edge or Brave should work but are untested) |
 | **OBS Studio** | any recent version, with a Browser Source (included in OBS) |
 | **VoiceStudio** | running locally or on another computer in your network |
-| **Relay** | [VoiceStudio OBS Connector Relay](https://github.com/eikira/VoiceStudio-OBS-Connector-Relay) on the computer that runs OBS |
+| **Relay** | version **0.0.7 or newer**: [VoiceStudio OBS Connector Relay](https://github.com/eikira/VoiceStudio-OBS-Connector-Relay) on the computer that runs OBS |
 | **Chat** | Twitch, YouTube, Rumble or Kick chat open in your browser (normal page or popout) |
 
 ## Install
@@ -79,6 +80,17 @@ Settings shows the relay's version and tells you if a newer one exists, and has 
 Limits: default 190 characters per message; optional cooldown per viewer (after a command is accepted,
 more commands from that viewer are ignored for N seconds).
 
+## Read all chat (optional)
+
+Settings -> **7. Read all chat**. When on, every chat line is read aloud, not only commands. Lines that start with `!` stay commands.
+
+- **Voices:** one fixed voice, a **random voice for every message**, or a **random voice per chatter** that each chatter keeps for the session (until you close the browser or press "Reset chatter voices"). You tick which voices the randomizer may use.
+- **"Paul says: ..."**: optional. The name is made easier to say (`xX_paul_1234` becomes "xX paul"). You can give "Paul says" its **own voice**; the relay then prepares both parts and plays them one after the other. Optionally the name is skipped when the same chatter writes again right away.
+- **Not read:** links, lines of only emotes or emoji, `!` lines that are not your commands (switchable), names on the **ignored names** list (Nightbot, StreamElements and other bots are listed by default), and lines containing a **blocked word**.
+- **Protection:** a cooldown per chatter and a limit of waiting lines (the oldest are dropped). Commands are never dropped.
+
+Everything typed in your chat is spoken on your stream: use blocked words and ignored names, and keep your platform's rules in mind.
+
 ## Backup and restore your settings
 
 Chrome stores the settings together with the extension. If you delete or move the extension folder, or load it from a new folder, the settings are gone.
@@ -95,12 +107,13 @@ Because the OBS ID is in the file, your old OBS Browser Source URL keeps working
 - **One exception, the update check:** when Chrome starts and when you open the popup or Settings (at most once a day) the extension asks
   `api.github.com` which release is the newest. That is a public page; nothing about you is sent. GitHub sees your IP address like any
   website you visit. You can switch it off in Settings -> 5. Updates.
-- Only chat messages that start with `!` are looked at further. Settings are stored in Chrome on your computer.
+- Only chat messages that start with `!` are looked at further, unless you switch on "Read all chat". Settings are stored in Chrome on your computer.
 - It needs access to the supported chat sites (to read chat) and to `127.0.0.1` / `localhost`
   (relay and VoiceStudio). Another VoiceStudio address is only contacted after you allow it.
 
 ## Troubleshooting
 
+- **Red notice "NOT WORKING" in the popup:** the relay is missing, not running, or older than 0.0.7. Install or update the [relay](https://github.com/eikira/VoiceStudio-OBS-Connector-Relay/releases/latest) and start it; the notice goes away by itself.
 - **Popup says Relay "not reachable":** start the relay. The address in settings must match its port (default 8787).
 - **Popup Chat line says "not detected":** open your chat page; if it is already open, refresh it (F5).
 - **Silence in OBS:** the Browser Source must show "connected" (popup: OBS page). Keep "Control audio via OBS" in mind for the mixer.

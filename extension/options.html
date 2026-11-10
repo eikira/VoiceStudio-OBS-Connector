@@ -10,6 +10,8 @@
   <h1>VoiceStudio OBS Connector <span class="muted" style="font-size:13px;font-weight:400">version <span id="version"></span></span></h1>
   <p class="sub">Chat commands like <b>!voice hello</b> are read aloud with the VoiceStudio voice you link to that command.</p>
 
+  <div class="gate" id="gate" hidden><span id="gateText"></span> <a id="gateLink" href="#" target="_blank" rel="noopener">Download the relay</a></div>
+
   <section>
     <label class="inline"><input type="checkbox" id="enabled"> Extension enabled</label>
   </section>
@@ -129,6 +131,46 @@
     </div>
     <p class="note"><b>Export</b> saves what you last saved (click Save first if you just changed something). <b>Import</b> fills this page with the settings from the file, replacing what is shown; check them, then click <b>Save</b> to keep them. The file contains your addresses and your OBS ID, so keep it private.</p>
     <div class="status" id="backupStatus"></div>
+  </section>
+
+  <section id="readall">
+    <h2>7. Read all chat (optional)</h2>
+    <label class="inline"><input type="checkbox" id="readAll"> Read every chat line aloud, not only commands</label>
+    <p class="note" style="margin-top:0">Lines starting with <b>!</b> are still commands. Needs relay 0.0.7 or newer. Chat lines are read with the voice settings below; commands keep their own voices.</p>
+
+    <label>Which voice reads the chat?</label>
+    <div class="radios">
+      <label class="inline"><input type="radio" name="allMode" value="fixed"> One fixed voice</label>
+      <label class="inline"><input type="radio" name="allMode" value="random"> A random voice for every message</label>
+      <label class="inline"><input type="radio" name="allMode" value="perChatter"> A random voice per chatter, kept for this session (until the browser is closed or you reset it)</label>
+    </div>
+    <div id="allVoiceBox"><label>Fixed voice</label><div id="allVoicePicker"></div></div>
+    <div id="allPoolBox">
+      <label>Voices the randomizer may use</label>
+      <div class="toolbar" style="margin-top:0"><button class="small" id="poolAll">Select all</button><button class="small" id="poolNone">Select none</button><button class="small" id="resetChatterVoices">Reset chatter voices</button></div>
+      <div class="pool" id="pool"></div>
+      <p class="note">Voices come from "Load voices from VoiceStudio" in section 3.</p>
+    </div>
+
+    <label class="inline"><input type="checkbox" id="allSayName"> Say the chatter's name first: "Paul says: ..."</label>
+    <div id="nameBox">
+      <label>Voice for the "Paul says" part (optional)</label>
+      <div id="allNameVoicePicker"></div>
+      <p class="note">Leave on "same as the line" to use one voice for everything. With a separate voice, the relay prepares both parts and then plays them one after the other.</p>
+      <label class="inline"><input type="checkbox" id="allSkipRepeatName"> Skip the name when the same chatter writes again right away</label>
+    </div>
+
+    <label class="inline"><input type="checkbox" id="allIgnoreLinks"> Skip lines with links, and lines that are only emotes or emoji</label>
+    <label class="inline"><input type="checkbox" id="allIgnoreBang"> Skip lines starting with ! that are not one of your commands</label>
+    <label for="ignoredNames">Ignored names (one per line, bots and so on)</label>
+    <textarea id="ignoredNames" spellcheck="false"></textarea>
+    <label for="blockedWords">Blocked words (one per line; a line containing one is not read)</label>
+    <textarea id="blockedWords" spellcheck="false"></textarea>
+    <div class="grid2">
+      <div><label for="allCooldown">Cooldown per chatter (seconds)</label><input type="number" id="allCooldown" min="0" max="3600" step="1"></div>
+      <div><label for="maxQueue">Max waiting chat lines</label><input type="number" id="maxQueue" min="1" max="100" step="1"><p class="note">When more are waiting, the oldest are dropped.</p></div>
+    </div>
+    <p class="note">Everything typed in chat gets spoken on your stream: use blocked words, ignored names and a cooldown, and consider your platform's rules.</p>
   </section>
 
   <div class="row-line"><button class="primary" id="save">Save</button><span class="status" id="saveStatus"></span></div>

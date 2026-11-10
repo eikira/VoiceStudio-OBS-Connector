@@ -39,6 +39,13 @@ chat page --content script--> background.js (service worker) --POST /send--> Rel
 | `options.html/js`, `popup.html/js`, `ui.css` | Settings page and toolbar popup. |
 | `tests/shared.test.js` | Unit tests. Run with `node --test` (Node 18+). Do not pass a directory. |
 
+## Read all chat and the relay gate (0.1.1)
+
+- **Relay gate (hard requirement):** `background.js` `relayReady()` calls the relay's `GET /info` (cached ~15 s when fine, ~3 s when blocked) and accepts only `protocol >= 2` (relay 0.0.7+). Otherwise it drops **everything** (commands, chat lines, the Send test button, and the row Test in settings), sets the red "!" badge and stores `relayGate` in `chrome.storage.session`; popup and settings show a red banner. Do not add a way around it. Raise `RELAY_MIN_VERSION`/`RELAY_MIN_PROTOCOL` in `lib/shared.js` whenever a feature needs a newer relay.
+- **Read all:** `content/common.js` forwards non-`!` lines only while `config.readAll` is on (it mirrors the setting through `storage.onChanged`, so nothing wakes the service worker when it is off). `handleChat` first tries the commands, then `allLine()` (filters), `pickAllVoice()`, `needsName()`, `buildChatPayload()`. Pure logic lives in `lib/shared.js` and is unit tested.
+- Chat payloads carry `kind:'chat'` and `maxQueue`; with a separate name voice they carry `intro:{text,voice,model,speed}` and the relay/overlay requests both clips, waits for both, plays intro then message. Per-chatter voices live in `chrome.storage.session` (`chatterVoices`, capped at 5000).
+- New config keys must be added to `DEFAULTS`, `sanitizeConfig`, `fillForm`/`collect` in `options.js` and the settings backup.
+
 ## Backup: export / import of settings
 
 - Settings -> 6. Backup. Pure logic is in `lib/shared.js` (`buildExport`, `parseImport`, `sanitizeConfig`, unit tested); the buttons are in `options.js`.
@@ -66,6 +73,7 @@ chat page --content script--> background.js (service worker) --POST /send--> Rel
 ## Design rules (keep these)
 
 - **Small and fast.** Plain JavaScript, no libraries, no build step, no bundler. Do not add dependencies.
+- **Needs relay 0.0.7+** (see the relay gate above).
 - **Minimal permissions.** Do not add permissions or host permissions without a strong reason.
 - **No network calls except** the relay and VoiceStudio addresses the user configured, and the once-a-day update check to GitHub (which must stay switchable and documented in the README privacy section).
 - **GPL-3.0.** Keep the license, the copyright line (eikira) and the credit to Social Stream Ninja

@@ -41,6 +41,16 @@
         if (observer) observer.disconnect();
         timers.forEach(clearInterval);
       }
+      // "Read all chat" switch, mirrored from the settings. When off, only "!" lines leave the page.
+      var forwardAll = false;
+      try {
+        chrome.storage.local.get('config', function (r) {
+          var c = r && r.config; forwardAll = !!(c && c.readAll && c.enabled !== false);
+        });
+        chrome.storage.onChanged.addListener(function (ch, area) {
+          if (area === 'local' && ch.config) { var c = ch.config.newValue; forwardAll = !!(c && c.readAll && c.enabled !== false); }
+        });
+      } catch (e) { /* extension reloaded */ }
       var seenCount = 0;   // live chat messages noticed (any message, not only commands)
       var lastCommand = '';
 
@@ -72,9 +82,13 @@
           elSig.set(el, sig);
           seenCount++;
           var text = String(info.text).replace(/[​-‍﻿]/g, '').trim();
-          if (text.charAt(0) !== '!') return;
-          var firstOfKind = lastCommand !== text.slice(0, 40);
-          lastCommand = text.slice(0, 40);
+          var isBang = text.charAt(0) === '!';
+          if (!isBang && !forwardAll) return;
+          var firstOfKind = false;
+          if (isBang) {
+            firstOfKind = lastCommand !== text.slice(0, 40);
+            lastCommand = text.slice(0, 40);
+          }
           if (info.id) {
             if (seenIds.indexOf(info.id) !== -1) return;
             seenIds.push(info.id);

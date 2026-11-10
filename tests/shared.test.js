@@ -173,3 +173,81 @@ test('settings backup: tampered values are cleaned, not trusted', () => {
   const many = S.sanitizeConfig({ mappings: Array.from({ length: 300 }, (_, i) => ({ command: 'c' + i, voice: 'v' })) });
   assert.strictEqual(many.config.mappings.length, 200);
 });
+
+// ---- 0.1.1: read all chat ----------------------------------------------------------------
+const base = () => Object.assign({}, S.DEFAULTS, { readAll: true, allVoice: 'v1', allVoices: [{ id: 'a' }, { id: 'b' }, { id: 'c' }], maxChars: 100 });
+
+test('allLine: filters', () => {
+  const c = base();
+  assert.strictEqual(S.allLine(c, 'hello there').text, 'hello there');
+  assert.strictEqual(S.allLine(c, '!sr foo').reason, 'bang');
+  assert.strictEqual(S.allLine(c, 'look https://x.com/a').reason, 'link');
+  assert.strictEqual(S.allLine(c, 'visit example.com now').reason, 'link');
+  assert.strictEqual(S.allLine(c, '😂😂').reason, 'nothing-to-read');
+  assert.strictEqual(S.allLine(c, 'Kappa 😂 nice').text, 'Kappa nice');
+  assert.strictEqual(S.allLine(c, '   ').reason, 'empty');
+  c.blockedWords = 'ass';
+  assert.strictEqual(S.allLine(c, 'you ass').reason, 'blocked-word');
+  assert.strictEqual(S.allLine(c, 'nice bass').ok, true);
+  assert.strictEqual(S.allLine(Object.assign(c, { allIgnoreLinks: false }), 'a.com hi').ok, true);
+  assert.ok(S.allLine(base(), 'x'.repeat(500)).text.length <= 100);
+});
+
+test('ignored names', () => {
+  const c = base();
+  assert.ok(S.isIgnoredName(c, 'Nightbot'));
+  assert.ok(S.isIgnoredName(c, '@streamelements'));
+  assert.ok(!S.isIgnoredName(c, 'paul'));
+  assert.ok(!S.isIgnoredName(c, ''));
+});
+
+test('pickAllVoice: modes', () => {
+  const c = base();
+  assert.strictEqual(S.pickAllVoice(c, 'k', {}).voice, 'v1');
+  c.allVoiceMode = 'random';
+  const seen = new Set();
+  for (let i = 0; i < 60; i++) seen.add(S.pickAllVoice(c, 'k', {}).voice);
+  assert.deepStrictEqual([...seen].sort(), ['a', 'b', 'c']);
+  c.allVoiceMode = 'perChatter';
+  assert.deepStrictEqual(S.pickAllVoice(c, 'k', { k: 'b' }), { voice: 'b' });
+  const as = {};
+  ['t:1', 't:2', 't:3'].forEach((k) => { const p = S.pickAllVoice(c, k, as); as[k] = p.assign; });
+  assert.deepStrictEqual(Object.values(as).sort(), ['a', 'b', 'c']); // spread over the pool
+  assert.ok(S.pickAllVoice(c, 'k', { k: 'gone' }).assign); // voice left the pool: new pick
+  c.allVoices = [];
+  assert.strictEqual(S.pickAllVoice(c, 'k', {}).voice, 'v1');
+});
+
+test('names and payloads', () => {
+  const c = base();
+  assert.strictEqual(S.spokenName('xX_paul_1234'), 'xX paul');
+  assert.strictEqual(S.spokenName('@Anna'), 'Anna');
+  c.allSayName = true;
+  assert.ok(S.needsName(c, 'k', null, 1000));
+  assert.ok(!S.needsName(c, 'k', { key: 'k', at: 900 }, 1000));
+  assert.ok(S.needsName(c, 'k', { key: 'z', at: 900 }, 1000));
+  assert.ok(S.needsName(c, 'k', { key: 'k', at: 0 }, 200000));
+  const plain = S.buildChatPayload(c, 'hi', 'a', { user: 'Paul', platform: 'twitch' }, false);
+  assert.strictEqual(plain.kind, 'chat'); assert.strictEqual(plain.text, 'hi'); assert.ok(!plain.intro); assert.strictEqual(plain.maxQueue, 5);
+  const same = S.buildChatPayload(c, 'hi', 'a', { user: 'Paul' }, true);
+  assert.strictEqual(same.text, 'Paul says: hi'); assert.ok(!same.intro);
+  c.allNameVoice = 'narrator';
+  const two = S.buildChatPayload(c, 'hi', 'a', { user: 'Paul' }, true);
+  assert.strictEqual(two.text, 'hi'); assert.deepStrictEqual([two.intro.text, two.intro.voice], ['Paul says', 'narrator']);
+});
+
+test('relay gate', () => {
+  assert.strictEqual(S.checkRelayInfo({ version: '0.0.7', protocol: 2 }).ok, true);
+  assert.strictEqual(S.checkRelayInfo({ version: '0.0.6' }).ok, false);
+  assert.strictEqual(S.checkRelayInfo({ version: '0.0.6' }).reason, 'old');
+  assert.strictEqual(S.checkRelayInfo(null).ok, false);
+  assert.match(S.relayGateMessage({ ok: false, reason: 'old', version: '0.0.6' }), /too old.*0\.0\.7/);
+  assert.match(S.relayGateMessage({ ok: false, reason: 'down', error: 'no answer' }), /not running/);
+  assert.strictEqual(S.relayGateMessage({ ok: true }), '');
+});
+
+test('sanitizeConfig keeps and bounds the read-all keys', () => {
+  const r = S.sanitizeConfig({ readAll: true, allVoiceMode: 'bogus', maxQueue: 9999, allVoices: [{ id: 'a', name: 'A' }, { id: 'a' }, {}] }).config;
+  assert.strictEqual(r.readAll, true); assert.strictEqual(r.allVoiceMode, 'fixed');
+  assert.ok(r.maxQueue <= 100); assert.strictEqual(r.allVoices.length, 1);
+});

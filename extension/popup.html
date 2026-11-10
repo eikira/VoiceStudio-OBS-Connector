@@ -7,7 +7,9 @@
 </head>
 <body class="popup">
   <h1>VoiceStudio OBS Connector</h1>
+  <div class="gate" id="gate" hidden><span id="gateText"></span> <a id="gateLink" href="#" target="_blank" rel="noopener">Download relay</a></div>
   <label class="inline"><input type="checkbox" id="enabled"> Enabled</label>
+  <div class="line"><span class="muted">Read all chat</span><span id="readAllState">off</span></div>
   <div id="updateBox" class="update" hidden><b>Update available: <span id="updateVer"></span></b> <a id="updateLink" href="#" target="_blank" rel="noopener">Download</a><div class="muted" style="font-size:11px">Replace the old files, then reload. Steps are in Settings.</div></div>
   <div class="line"><span class="muted">Relay</span><span id="relay">checking...</span></div>
   <div class="muted" id="relayHint" style="font-size:11px;margin-bottom:4px" hidden>The relay is a small program that must be running. <a href="https://github.com/eikira/VoiceStudio-OBS-Connector-Relay/releases/latest" target="_blank" rel="noopener">Download it</a></div>

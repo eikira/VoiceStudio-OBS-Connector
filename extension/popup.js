@@ -9,10 +9,25 @@
     el.className = cls || '';
   }
 
+  // Without a relay of version 0.0.7 or newer the extension refuses to speak: say so loudly.
+  function gateCheck(force) {
+    var done = function (gate) {
+      var bad = gate && gate.ok === false;
+      $('gate').hidden = !bad;
+      if (bad) { $('gateText').textContent = 'NOT WORKING. ' + S.relayGateMessage(gate); $('gateLink').href = S.RELAY_RELEASES_PAGE; }
+    };
+    if (force) {
+      chrome.runtime.sendMessage({ type: 'relaycheck' }, function (res) { void chrome.runtime.lastError; done(res && res.gate); });
+    } else {
+      chrome.storage.session.get('relayGate').then(function (r) { done(r.relayGate); });
+    }
+  }
+
   function refresh() {
     chrome.storage.local.get('config').then(function (res) {
       cfg = Object.assign({}, S.DEFAULTS, res.config || {});
       $('enabled').checked = cfg.enabled;
+      paint($('readAllState'), cfg.readAll ? 'on' : 'off', cfg.readAll ? 'good' : 'muted');
       var n = (cfg.mappings || []).filter(function (m) { return m.command && m.voice; }).length;
       paint($('cmds'), n ? n + ' set up' : 'none yet', n ? '' : 'bad');
       if (!cfg.overlayId) { paint($('relay'), 'open Settings first', 'bad'); return; }
@@ -100,7 +115,8 @@
   showUpdate();
 
   $('version').textContent = chrome.runtime.getManifest().version;
+  gateCheck(true);
   refresh();
   refreshChat();
-  setInterval(function () { refresh(); refreshChat(); }, 3000);
+  setInterval(function () { refresh(); refreshChat(); gateCheck(true); }, 3000);
 })();
