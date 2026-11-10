@@ -86,7 +86,7 @@
   function refreshPickers() {
     pickers = pickers.filter(function (p) { return p.el.isConnected; });
     pickers.forEach(function (p) { p.refresh(); });
-    if ($('pool') && typeof renderPool === 'function') renderPool();
+    renderPool();
   }
 
   // Speed dropdown: only 0.5 ... 1.5 in steps of 0.1 (plus an optional "default" choice).
@@ -218,8 +218,8 @@
     });
   }
   function setAllPool(on) {
-    voices.forEach(function (v) { if (on) { poolSel[v.id] = true; poolNames[v.id] = v.name || ''; } else delete poolSel[v.id]; });
-    if (!on) poolSel = {};
+    poolSel = {};
+    if (on) voices.forEach(function (v) { poolSel[v.id] = true; poolNames[v.id] = v.name || ''; });
     renderPool();
   }
   function allMode() {
@@ -325,8 +325,8 @@
   function showRelayVersion(relay) {
     return fetch(relay + '/info').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
       var el = $('relayVersion');
-      if (!d || !d.version) {
-        setStatus(el, 'This relay is older than 0.0.6. Please update it (download page: github.com/eikira/VoiceStudio-OBS-Connector-Relay/releases/latest).', 'muted');
+      if (!d || !d.version || !(d.protocol >= 2)) {
+        setStatus(el, 'This relay is older than ' + S.RELAY_MIN_VERSION + '. This extension will not work until you update it (download page: github.com/eikira/VoiceStudio-OBS-Connector-Relay/releases/latest).', 'bad');
       } else if (d.updateAvailable) {
         el.className = 'status bad';
         el.textContent = 'Relay ' + d.version + '. A newer relay is available: ' + d.latest + '. ';
@@ -502,7 +502,7 @@
     say('Sending...');
     // The extension refuses to speak with a missing or too old relay: this test is refused too.
     new Promise(function (resolve) {
-      chrome.runtime.sendMessage({ type: 'relaycheck' }, function (res) { void chrome.runtime.lastError; resolve(res && res.gate); });
+      chrome.runtime.sendMessage({ type: 'relaycheck', force: true }, function (res) { void chrome.runtime.lastError; resolve(res && res.gate); });
     }).then(function (gate) {
       if (gate && gate.ok === false) throw new Error(S.relayGateMessage(gate));
       return fetch(S.trimUrl(cfg.relayUrl) + '/send?id=' + encodeURIComponent(cfg.overlayId), {
@@ -702,7 +702,7 @@
   }
   chrome.storage.onChanged.addListener(function (ch, area) { if (area === 'session' && ch.relayGate) showGate(); });
   showGate();
-  chrome.runtime.sendMessage({ type: 'relaycheck' }, function () { void chrome.runtime.lastError; });
+  chrome.runtime.sendMessage({ type: 'relaycheck', force: true }, function () { void chrome.runtime.lastError; });
   setInterval(function () { chrome.runtime.sendMessage({ type: 'relaycheck' }, function () { void chrome.runtime.lastError; }); }, 8000);
   setInterval(checkRelay, 8000);
   load();

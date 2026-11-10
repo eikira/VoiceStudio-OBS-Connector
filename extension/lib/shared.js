@@ -435,7 +435,7 @@
         payload.intro = { text: ib.input, voice: ib.voice, model: ib.model };
         if (typeof ib.speed === 'number') payload.intro.speed = ib.speed;
       } else {
-        payload.text = introText + ': ' + payload.text; // same voice: one clip is enough
+        payload.text = (introText + ': ' + payload.text).slice(0, 2000); // same voice: one clip is enough (the relay accepts 2000 characters)
       }
     }
     return payload;

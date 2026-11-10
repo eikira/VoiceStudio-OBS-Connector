@@ -228,7 +228,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
   if (msg.type === 'relaycheck') {
-    getConfig().then((cfg) => relayReady(cfg, true)).then(() => sendResponse({ ok: true, gate }), () => sendResponse({ ok: false }));
+    getConfig().then((cfg) => relayReady(cfg, !!msg.force)).then(() => sendResponse({ ok: true, gate }), () => sendResponse({ ok: false }));
     return true;
   }
   if (msg.type === 'resetvoices') {
@@ -265,8 +265,8 @@ chrome.runtime.onStartup.addListener(() => {
 chrome.runtime.onInstalled.addListener(async () => {
   injectIntoOpenTabs().catch(() => {});
   checkForUpdate(false).catch(() => {});
-  getConfig().then((cfg) => relayReady(cfg, true)).catch(() => {});
   const cfg = await getConfig();
+  relayReady(cfg, true).catch(() => {});
   if (!cfg.overlayId) {
     cfg.overlayId = S.randomId();
     await chrome.storage.local.set({ config: cfg });

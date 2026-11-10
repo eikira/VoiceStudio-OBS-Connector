@@ -251,3 +251,9 @@ test('sanitizeConfig keeps and bounds the read-all keys', () => {
   assert.strictEqual(r.readAll, true); assert.strictEqual(r.allVoiceMode, 'fixed');
   assert.ok(r.maxQueue <= 100); assert.strictEqual(r.allVoices.length, 1);
 });
+
+test('same-voice name line never exceeds the relay limit of 2000 characters', () => {
+  const c = Object.assign(base(), { allSayName: true, maxChars: 2000 });
+  const p = S.buildChatPayload(c, 'x'.repeat(2000), 'a', { user: 'Paul' }, true);
+  assert.ok(p.text.length <= 2000);
+});

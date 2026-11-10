@@ -1,7 +1,8 @@
 /*
  * Shared chat-capture logic. A platform script calls VSCapture.start(...) with
  * selectors; this file watches the chat list, picks out messages that begin with
- * "!" and forwards them to the service worker (which decides if they match a command).
+ * "!" (or every line, while "Read all chat" is on) and forwards them to the service worker, which
+ * decides what to do with them.
  * It also reports a small status (listening or not, messages seen) that the popup shows.
  */
 (function () {

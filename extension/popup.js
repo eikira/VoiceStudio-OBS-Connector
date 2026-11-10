@@ -17,9 +17,9 @@
       if (bad) { $('gateText').textContent = 'NOT WORKING. ' + S.relayGateMessage(gate); $('gateLink').href = S.RELAY_RELEASES_PAGE; }
     };
     if (force) {
-      chrome.runtime.sendMessage({ type: 'relaycheck' }, function (res) { void chrome.runtime.lastError; done(res && res.gate); });
+      chrome.runtime.sendMessage({ type: 'relaycheck', force: true }, function (res) { void chrome.runtime.lastError; done(res && res.gate); });
     } else {
-      chrome.storage.session.get('relayGate').then(function (r) { done(r.relayGate); });
+      chrome.runtime.sendMessage({ type: 'relaycheck' }, function (res) { void chrome.runtime.lastError; done(res && res.gate); });
     }
   }
 
@@ -118,5 +118,5 @@
   gateCheck(true);
   refresh();
   refreshChat();
-  setInterval(function () { refresh(); refreshChat(); gateCheck(true); }, 3000);
+  setInterval(function () { refresh(); refreshChat(); gateCheck(false); }, 3000);
 })();
