@@ -48,7 +48,7 @@ chat page --content script--> background.js (service worker) --POST /send--> Rel
 
 ## Backup: export / import of settings
 
-- Settings -> 6. Backup. Pure logic is in `lib/shared.js` (`buildExport`, `parseImport`, `sanitizeConfig`, unit tested); the buttons are in `options.js`.
+- Settings -> 7. Backup. Pure logic is in `lib/shared.js` (`buildExport`, `parseImport`, `sanitizeConfig`, unit tested); the buttons are in `options.js`.
 - The file is JSON: `{ app: "VoiceStudio OBS Connector", kind: "settings", format: 1, extensionVersion, exportedAt, settings: {...} }`. `settings` is the whole config (including the OBS ID so the OBS URL survives a reinstall).
   Never put stats, chat data, the update cache or anything else in it.
 - **Treat the file as untrusted input.** Import goes through `sanitizeConfig`: unknown keys dropped, URLs must be http(s), speeds/limits clamped, commands checked like the Save button does, at most 200 commands, files over 512 KB refused. The values are only ever put into form fields as text.

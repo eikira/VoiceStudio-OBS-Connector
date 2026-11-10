@@ -99,42 +99,8 @@
     </div>
   </section>
 
-  <section id="updates">
-    <h2>5. Updates</h2>
-    <div class="status" id="updateStatus" style="margin-top:0"></div>
-    <div class="toolbar">
-      <button class="small" id="checkUpdate">Check for updates now</button>
-      <a id="updatePage" class="small" href="#" target="_blank" rel="noopener" style="align-self:center">Open the download page</a>
-    </div>
-    <label class="inline"><input type="checkbox" id="updateCheck"> Check for a new version once a day</label>
-    <p class="note">This only asks GitHub which version is the newest (a public page). Nothing about you or your settings is sent. <b>Nothing is installed automatically</b>: you update by hand.</p>
-
-    <h2 style="margin-top:16px">How to update</h2>
-    <ol class="steps">
-      <li>Download the new zip from the download page above.</li>
-      <li>Click <b>Show where this extension is installed</b> below. Chrome opens the details page of this extension. The folder is listed there as <b>Source</b>.</li>
-      <li>Unzip the new download so that its <b>VoiceStudio-OBS-Connector</b> folder <b>replaces the old one</b>: extract it into the folder that <i>contains</i> the old VoiceStudio-OBS-Connector folder and choose Replace (overwrite all). Or copy <b>everything inside</b> the new folder into the old one and <b>overwrite the old files</b>. Keep the same folder: another folder counts as a different extension and your settings would not come with it.</li>
-      <li>On the Chrome extensions page, click the <b>reload</b> icon (circular arrow) of this extension. Your settings are kept.</li>
-    </ol>
-    <div class="toolbar"><button id="showWhere">Show where this extension is installed</button></div>
-    <p class="note">Or open it yourself: type <code>chrome://extensions</code> in the address bar, switch on <b>Developer mode</b>, click <b>Details</b> on VoiceStudio OBS Connector and look for <b>Source</b>. It shows the full folder path on Windows, macOS and Linux. This extension's ID is <code id="extId"></code>.</p>
-    <div class="status" id="whereStatus"></div>
-  </section>
-
-  <section id="backup">
-    <h2>6. Backup: export and import your settings</h2>
-    <p class="note" style="margin-top:0">Saves everything you set up (commands, voices, speed, models, addresses, options and the ID of your OBS URL) in <b>one small file</b>, and loads it back. Use it before you delete or move the extension folder, or to move to a new computer or browser. Chrome keeps the settings together with the extension, so a deleted extension loses them.</p>
-    <div class="toolbar">
-      <button id="exportSettings">Export settings to a file</button>
-      <button id="importSettings">Import settings from a file...</button>
-      <input type="file" id="importFile" accept=".json,application/json" hidden>
-    </div>
-    <p class="note"><b>Export</b> saves what you last saved (click Save first if you just changed something). <b>Import</b> fills this page with the settings from the file, replacing what is shown; check them, then click <b>Save</b> to keep them. The file contains your addresses and your OBS ID, so keep it private.</p>
-    <div class="status" id="backupStatus"></div>
-  </section>
-
   <section id="readall">
-    <h2>7. Read all chat (optional)</h2>
+    <h2>5. Read all chat (optional)</h2>
     <label class="inline"><input type="checkbox" id="readAll"> Read every chat line aloud, not only commands</label>
     <p class="note" style="margin-top:0">Lines starting with <b>!</b> are still commands. Needs relay 0.0.7 or newer. Chat lines are read with the voice settings below; commands keep their own voices.</p>
 
@@ -171,6 +137,40 @@
       <div><label for="maxQueue">Max waiting chat lines</label><input type="number" id="maxQueue" min="1" max="100" step="1"><p class="note">When more are waiting, the oldest are dropped.</p></div>
     </div>
     <p class="note">Everything typed in chat gets spoken on your stream: use blocked words, ignored names and a cooldown, and consider your platform's rules.</p>
+  </section>
+
+  <section id="updates">
+    <h2>6. Updates</h2>
+    <div class="status" id="updateStatus" style="margin-top:0"></div>
+    <div class="toolbar">
+      <button class="small" id="checkUpdate">Check for updates now</button>
+      <a id="updatePage" class="small" href="#" target="_blank" rel="noopener" style="align-self:center">Open the download page</a>
+    </div>
+    <label class="inline"><input type="checkbox" id="updateCheck"> Check for a new version once a day</label>
+    <p class="note">This only asks GitHub which version is the newest (a public page). Nothing about you or your settings is sent. <b>Nothing is installed automatically</b>: you update by hand.</p>
+
+    <h2 style="margin-top:16px">How to update</h2>
+    <ol class="steps">
+      <li>Download the new zip from the download page above.</li>
+      <li>Click <b>Show where this extension is installed</b> below. Chrome opens the details page of this extension. The folder is listed there as <b>Source</b>.</li>
+      <li>Unzip the new download so that its <b>VoiceStudio-OBS-Connector</b> folder <b>replaces the old one</b>: extract it into the folder that <i>contains</i> the old VoiceStudio-OBS-Connector folder and choose Replace (overwrite all). Or copy <b>everything inside</b> the new folder into the old one and <b>overwrite the old files</b>. Keep the same folder: another folder counts as a different extension and your settings would not come with it.</li>
+      <li>On the Chrome extensions page, click the <b>reload</b> icon (circular arrow) of this extension. Your settings are kept.</li>
+    </ol>
+    <div class="toolbar"><button id="showWhere">Show where this extension is installed</button></div>
+    <p class="note">Or open it yourself: type <code>chrome://extensions</code> in the address bar, switch on <b>Developer mode</b>, click <b>Details</b> on VoiceStudio OBS Connector and look for <b>Source</b>. It shows the full folder path on Windows, macOS and Linux. This extension's ID is <code id="extId"></code>.</p>
+    <div class="status" id="whereStatus"></div>
+  </section>
+
+  <section id="backup">
+    <h2>7. Backup: export and import your settings</h2>
+    <p class="note" style="margin-top:0">Saves everything you set up (commands, voices, speed, models, addresses, options and the ID of your OBS URL) in <b>one small file</b>, and loads it back. Use it before you delete or move the extension folder, or to move to a new computer or browser. Chrome keeps the settings together with the extension, so a deleted extension loses them.</p>
+    <div class="toolbar">
+      <button id="exportSettings">Export settings to a file</button>
+      <button id="importSettings">Import settings from a file...</button>
+      <input type="file" id="importFile" accept=".json,application/json" hidden>
+    </div>
+    <p class="note"><b>Export</b> saves what you last saved (click Save first if you just changed something). <b>Import</b> fills this page with the settings from the file, replacing what is shown; check them, then click <b>Save</b> to keep them. The file contains your addresses and your OBS ID, so keep it private.</p>
+    <div class="status" id="backupStatus"></div>
   </section>
 
   <div class="row-line"><button class="primary" id="save">Save</button><span class="status" id="saveStatus"></span></div>

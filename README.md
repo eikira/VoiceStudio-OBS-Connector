@@ -50,7 +50,7 @@ The extension tells you when a new version is out ("Update available" in the pop
 installed automatically**. You update by hand:
 
 1. Download the new zip from the [latest release](https://github.com/eikira/VoiceStudio-OBS-Connector/releases/latest).
-2. Open the extension's **Settings** (popup -> Settings), scroll to **5. Updates** and click **Show where this extension is installed**.
+2. Open the extension's **Settings** (popup -> Settings), scroll to **6. Updates** and click **Show where this extension is installed**.
    Chrome opens the extension's details page. The folder is listed there as **Source** (the full path, on Windows, macOS and Linux).
    Without the button: type `chrome://extensions` in the address bar, turn on *Developer mode*, click *Details*, look at *Source*.
 3. Unzip the new download so that its `VoiceStudio-OBS-Connector` folder **replaces the old one**: extract it into the folder that *contains* the old `VoiceStudio-OBS-Connector` folder and choose *Replace*. Or copy **everything inside** the new folder into the old one and overwrite the old files. Keep the same folder: a different folder
@@ -82,7 +82,7 @@ more commands from that viewer are ignored for N seconds).
 
 ## Read all chat (optional)
 
-Settings -> **7. Read all chat**. When on, every chat line is read aloud, not only commands. Lines that start with `!` stay commands.
+Settings -> **5. Read all chat**. When on, every chat line is read aloud, not only commands. Lines that start with `!` stay commands.
 
 - **Voices:** one fixed voice, a **random voice for every message**, or a **random voice per chatter** that each chatter keeps for the session (until you close the browser or press "Reset chatter voices"). You tick which voices the randomizer may use.
 - **"Paul says: ..."**: optional. The name is made easier to say (`xX_paul_1234` becomes "xX paul"). You can give "Paul says" its **own voice**; the relay then prepares both parts and plays them one after the other. Optionally the name is skipped when the same chatter writes again right away.
@@ -94,10 +94,10 @@ Everything typed in your chat is spoken on your stream: use blocked words and ig
 ## Backup and restore your settings
 
 Chrome stores the settings together with the extension. If you delete or move the extension folder, or load it from a new folder, the settings are gone.
-So: **Settings -> 6. Backup -> Export settings to a file**. You get one small file with everything: commands, voices, speed and model per command,
+So: **Settings -> 7. Backup -> Export settings to a file**. You get one small file with everything: commands, voices, speed and model per command,
 addresses, options and the ID of your OBS URL.
 
-To restore (after reinstalling, on a new computer or browser): **Settings -> 6. Backup -> Import settings from a file**, check what was loaded, then click **Save**.
+To restore (after reinstalling, on a new computer or browser): **Settings -> 7. Backup -> Import settings from a file**, check what was loaded, then click **Save**.
 Because the OBS ID is in the file, your old OBS Browser Source URL keeps working. Export saves what you last saved. Keep the file private (it contains your addresses and OBS ID).
 
 ## Privacy
@@ -106,7 +106,7 @@ Because the OBS ID is in the file, your old OBS Browser Source URL keeps working
   your VoiceStudio.
 - **One exception, the update check:** when Chrome starts and when you open the popup or Settings (at most once a day) the extension asks
   `api.github.com` which release is the newest. That is a public page; nothing about you is sent. GitHub sees your IP address like any
-  website you visit. You can switch it off in Settings -> 5. Updates.
+  website you visit. You can switch it off in Settings -> 6. Updates.
 - Only chat messages that start with `!` are looked at further, unless you switch on "Read all chat". Settings are stored in Chrome on your computer.
 - It needs access to the supported chat sites (to read chat) and to `127.0.0.1` / `localhost`
   (relay and VoiceStudio). Another VoiceStudio address is only contacted after you allow it.
