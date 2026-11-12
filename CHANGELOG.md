@@ -2,6 +2,20 @@
 
 Short overview of what changed. Versions before 0.0.5 were private test versions.
 
+## 0.2.0
+
+The extension now works with **VoiceStudio or SimpleVoice OBS**. Renamed from "VoiceStudio OBS Connector" to **VoiceStudio+SimpleVoice OBS Connector**.
+
+- **Speech engine choice** (Settings -> 2): VoiceStudio or SimpleVoice OBS. SimpleVoice OBS needs no extra address (it runs on the relay address), no model and no format. Voices load from the chosen engine. Texts and download links name the engine.
+- **Detect** button: finds which of the two is running and selects it. VoiceStudio is asked at its quick `/health` address, SimpleVoice OBS at `/v1/models`. When nothing is found it says what happened at each address. It never changes your choice when both or neither answer. On the very first start the extension does this once by itself.
+- **Each program keeps its own setup.** Sections 2 (speech defaults), 3 (commands and voices) and 4 (read all chat) are saved separately for VoiceStudio and for SimpleVoice OBS. Switching the engine switches between the two setups; chat commands use the setup of the selected program. A small green line under each of these titles says which program you are looking at. Chatter voices ("a random voice per chatter") are remembered per program.
+- **VoiceStudio: only voices that exist in VoiceStudio are loaded.** The 13 fixed names VoiceStudio lists (alloy, ash, nova ...) are not voices: each only points to the engine's default voice. They are left out of the command rows, the fixed voice, the random pools and "Add all loaded voices as commands". For more random voices, create them in VoiceStudio. Pool entries that VoiceStudio does not list are removed after Load voices (click Save).
+- The Voice rows show only Command, Voice and Speed for both programs. The per-command model column is gone (a model set for a command in an older version is kept as it was, but cannot be edited any more).
+- **Import saves by itself.** An import used to only fill in the page; the extension works from the saved settings, so nothing worked until Save was clicked.
+- Export files hold both setups (file format 2). Files exported by older versions still import, into the program that is selected.
+- **Needs:** for VoiceStudio the [relay](https://github.com/eikira/VoiceStudio-OBS-Connector-Relay) 0.0.7 or newer, as before. For SimpleVoice OBS version 1.0.0 or newer.
+- **Folder, zip and repository renamed:** the folder inside the zip is now `VoiceStudio-SimpleVoice-OBS-Connector`, the zip is `VoiceStudio-SimpleVoice-OBS-Connector-<version>.zip`, the repository is `VoiceStudio-SimpleVoice-OBS-Connector`. **Moving from 0.1.1 is a one-time step:** a new folder name counts as a new extension to Chrome, so settings do not come along by themselves. Export your settings in 0.1.1 (Settings -> 7. Backup), remove 0.1.1, load the new folder, then Import. Updates from 0.2.0 on keep the same folder, so they keep your settings.
+
 ## 0.1.1
 - **Read all chat (optional):** Settings -> 4. Read all chat. Every line is read, not only commands. One fixed voice, a random voice per message, or a random voice per chatter kept for the session; you choose which voices the randomizer may use.
 - **"Paul says: ..."** option, with an optional separate voice for the "Paul says" part and an option to skip the name when the same chatter writes again.

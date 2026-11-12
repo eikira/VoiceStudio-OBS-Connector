@@ -35,12 +35,13 @@ async function cooldownOk(key, seconds) {
 // Version 0.1.1 and newer need relay 0.0.7 or newer (two-voice messages, chat lines). If the relay
 // is missing or too old the extension refuses to work: nothing is sent, the icon shows a red "!"
 // and the popup and the settings say why.
-let gate = { ok: null, at: 0, url: '' };
+let gate = { ok: null, at: 0, url: '', engine: '' };
 
 async function relayReady(cfg, force) {
   const url = S.trimUrl(cfg.relayUrl);
+  const engine = S.isSimpleVoice(cfg) ? 'simplevoice' : 'voicestudio';
   const now = Date.now();
-  if (!force && gate.ok !== null && gate.url === url && now - gate.at < (gate.ok ? 15000 : 3000)) return gate.ok;
+  if (!force && gate.ok !== null && gate.url === url && gate.engine === engine && now - gate.at < (gate.ok ? 15000 : 3000)) return gate.ok;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 2500);
   let next;
@@ -55,16 +56,17 @@ async function relayReady(cfg, force) {
   }
   next.at = Date.now();
   next.url = url;
+  next.engine = engine;
   const changed = gate.ok !== next.ok;
   gate = next;
   await chrome.storage.session.set({ relayGate: next });
   if (!next.ok) {
     chrome.action.setBadgeBackgroundColor({ color: '#c0392b' });
     chrome.action.setBadgeText({ text: '!' });
-    chrome.action.setTitle({ title: 'VoiceStudio OBS Connector: ' + S.relayGateMessage(next) });
+    chrome.action.setTitle({ title: 'VoiceStudio+SimpleVoice OBS Connector: ' + S.relayGateMessage(next) });
   } else if (changed) {
     chrome.action.setBadgeText({ text: '' });
-    chrome.action.setTitle({ title: 'VoiceStudio OBS Connector' });
+    chrome.action.setTitle({ title: 'VoiceStudio+SimpleVoice OBS Connector' });
   }
   return next.ok;
 }
@@ -130,8 +132,11 @@ async function handleChat(msg) {
   if (!line.ok) return;
   if (!(await relayReady(cfg))) return;
   if (!(await cooldownOk('all:' + who, cfg.allCooldownSec))) return;
-  const { chatterVoices, lastSpeaker } = await chrome.storage.session.get(['chatterVoices', 'lastSpeaker']);
-  const assigned = chatterVoices || {};
+  // Voice ids belong to one program, so each program keeps its own chatter -> voice list.
+  const cvKey = 'chatterVoices_' + (S.isSimpleVoice(cfg) ? 'simplevoice' : 'voicestudio');
+  const stored = await chrome.storage.session.get([cvKey, 'lastSpeaker']);
+  const lastSpeaker = stored.lastSpeaker;
+  const assigned = stored[cvKey] || {};
   const pick = S.pickAllVoice(cfg, who, assigned);
   if (!pick.voice) {
     await saveStats({ lastError: 'Read all chat: choose a voice in the settings.' });
@@ -141,7 +146,7 @@ async function handleChat(msg) {
     assigned[who] = pick.assign;
     const keys = Object.keys(assigned);
     if (keys.length > 5000) delete assigned[keys[0]];
-    await chrome.storage.session.set({ chatterVoices: assigned });
+    await chrome.storage.session.set({ [cvKey]: assigned });
   }
   const now = Date.now();
   const withName = S.needsName(cfg, who, lastSpeaker, now);
@@ -232,7 +237,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
   if (msg.type === 'resetvoices') {
-    chrome.storage.session.remove(['chatterVoices', 'lastSpeaker']).then(() => sendResponse({ ok: true }), () => sendResponse({ ok: false }));
+    chrome.storage.session.remove(['chatterVoices', 'chatterVoices_voicestudio', 'chatterVoices_simplevoice', 'lastSpeaker']).then(() => sendResponse({ ok: true }), () => sendResponse({ ok: false }));
     return true;
   }
   if (msg.type === 'test') {

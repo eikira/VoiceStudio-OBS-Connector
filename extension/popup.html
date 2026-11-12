@@ -2,17 +2,17 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>VoiceStudio OBS Connector</title>
+<title>VoiceStudio+SimpleVoice OBS Connector</title>
 <link rel="stylesheet" href="ui.css">
 </head>
 <body class="popup">
-  <h1>VoiceStudio OBS Connector</h1>
+  <h1>VoiceStudio+SimpleVoice OBS Connector</h1>
   <div class="gate" id="gate" hidden><span id="gateText"></span> <a id="gateLink" href="#" target="_blank" rel="noopener">Download relay</a></div>
   <label class="inline"><input type="checkbox" id="enabled"> Enabled</label>
   <div class="line"><span class="muted">Read all chat</span><span id="readAllState">off</span></div>
   <div id="updateBox" class="update" hidden><b>Update available: <span id="updateVer"></span></b> <a id="updateLink" href="#" target="_blank" rel="noopener">Download</a><div class="muted" style="font-size:11px">Replace the old files, then reload. Steps are in Settings.</div></div>
-  <div class="line"><span class="muted">Relay</span><span id="relay">checking...</span></div>
-  <div class="muted" id="relayHint" style="font-size:11px;margin-bottom:4px" hidden>The relay is a small program that must be running. <a href="https://github.com/eikira/VoiceStudio-OBS-Connector-Relay/releases/latest" target="_blank" rel="noopener">Download it</a></div>
+  <div class="line"><span class="muted" id="relayLabel">Relay</span><span id="relay">checking...</span></div>
+  <div class="muted" id="relayHint" style="font-size:11px;margin-bottom:4px" hidden><span id="relayHintText">The relay is a small program that must be running.</span> <a id="relayHintLink" href="https://github.com/eikira/VoiceStudio-OBS-Connector-Relay/releases/latest" target="_blank" rel="noopener">Download it</a></div>
   <div class="line"><span class="muted">OBS page</span><span id="obs">-</span></div>
   <div class="line"><span class="muted">Chat</span><span id="chat">-</span></div>
   <div class="muted" id="chatHint" style="font-size:11px;margin-bottom:4px"></div>

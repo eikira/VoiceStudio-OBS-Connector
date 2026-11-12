@@ -3,7 +3,7 @@
   var S = window.VSShared;
   var $ = function (id) { return document.getElementById(id); };
   var overlayId = '';
-  var voices = []; // [{ id, name }] loaded from VoiceStudio
+  var voices = []; // [{ id, name }] loaded from the chosen engine (VoiceStudio or SimpleVoice OBS)
   var knownModels = [{ id: 'tts-1-hd', name: 'tts-1-hd' }, { id: 'tts-1', name: 'tts-1' }];
   var pickers = []; // every dropdown, so all of them can be refreshed after loading voices/models
   var CUSTOM = '__custom__';
@@ -161,12 +161,8 @@
       blankLabel: '- choose a voice -', source: function () { return voices; }
     });
     var speed = speedSelect(m.speed, 'default');
-    var model = Picker({
-      value: m.model || '', placeholder: 'model name', blankLabel: 'default',
-      source: function () { return knownModels; }
-    });
     row._voice = voice;
-    row._model = model;
+    row._model = m.model || ''; // a model typed for this command in an older version is kept as it was (it is not edited here any more)
 
     var actions = document.createElement('div');
     actions.className = 'actions';
@@ -179,7 +175,7 @@
     del.addEventListener('click', function () { row.remove(); });
     test.addEventListener('click', function () { testRow(row, st); });
 
-    row.append(cmdWrap, voice.el, speed, model.el, actions, st);
+    row.append(cmdWrap, voice.el, speed, actions, st);
     $('mappings').appendChild(row);
     checkLength();
     return row;
@@ -191,13 +187,15 @@
       voice: row._voice.get(),
       voiceName: row._voice.getName(),
       speed: row.querySelector('.speed').value.trim(),
-      model: row._model.get()
+      model: row._model
     };
   }
 
   // ---- read the form ----------------------------------------------------------------------
   // ---- section 4: read all chat ------------------------------------------------------------
   var allVoicePicker = null, allNamePicker = null, poolSel = {}, poolNames = {};
+  // The setups of both programs (sections 2, 3 and 4). The one on the page is `shownEngine`; its values are read from the page.
+  var profiles = {}, shownEngine = 'voicestudio';
 
   function renderPool() {
     var box = $('pool');
@@ -276,10 +274,43 @@
     };
   }
 
+  // ---- the speech engine: VoiceStudio or SimpleVoice OBS ------------------------------------
+  function curEngine() { return $('engine').value === 'simplevoice' ? 'simplevoice' : 'voicestudio'; }
+  function engName() { return S.ENGINE_NAMES[curEngine()]; }
+  function relayTextAddress() {
+    return curEngine() === 'simplevoice' ? 'github.com/eikira/SimpleVoice-OBS' : 'github.com/eikira/VoiceStudio-OBS-Connector-Relay';
+  }
+
+  // Shows only what the chosen engine needs. `changedByUser`: the voice list belongs to the other program now.
+  function applyEngine(changedByUser) {
+    var sv = curEngine() === 'simplevoice';
+    document.body.classList.toggle('sv', sv);
+    document.querySelectorAll('.engName').forEach(function (el) { el.textContent = engName(); });
+    showEngineAddress();
+    if (changedByUser) {
+      // Each program keeps its own sections 2, 3 and 4: keep what is on the page for the old one, show the other one's.
+      profiles[shownEngine] = S.profileOf(collect());
+      shownEngine = curEngine();
+      fillProfile(profiles[shownEngine]);
+      voices = [];
+      refreshPickers();
+      setStatus($('voiceStatus'), 'Showing the ' + engName() + ' setup. Click "Load voices".', 'muted');
+      setStatus($('vsStatus'), '', 'muted');
+      checkRelay();
+    }
+  }
+
+  // The address the chosen engine is reached at (SimpleVoice OBS: the relay address from section 1).
+  function showEngineAddress() {
+    var a = vsBase();
+    $('engineAddress').textContent = a;
+  }
+
   function collect() {
     var speed = S.parseSpeed($('speed').value);
-    return Object.assign({
+    var cfg = Object.assign({
       enabled: $('enabled').checked,
+      engine: curEngine(),
       relayUrl: S.trimUrl($('relayUrl').value) || S.DEFAULTS.relayUrl,
       overlayId: overlayId,
       voiceStudioUrl: S.trimUrl($('vsUrl').value) || S.DEFAULTS.voiceStudioUrl,
@@ -293,6 +324,9 @@
       cooldownSec: Math.max(0, Math.min(3600, parseInt($('cooldown').value, 10) || 0)),
       updateCheck: $('updateCheck').checked
     }, collectReadAll());
+    cfg.profiles = {};
+    S.ENGINES.forEach(function (e) { cfg.profiles[e] = e === cfg.engine ? S.profileOf(cfg) : profiles[e] || S.defaultProfile(); });
+    return cfg;
   }
 
   function validate(cfg) {
@@ -326,15 +360,17 @@
     return fetch(relay + '/info').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
       var el = $('relayVersion');
       if (!d || !d.version || !(d.protocol >= 2)) {
-        setStatus(el, 'This relay is older than ' + S.RELAY_MIN_VERSION + '. This extension will not work until you update it (download page: github.com/eikira/VoiceStudio-OBS-Connector-Relay/releases/latest).', 'bad');
+        setStatus(el, curEngine() === 'simplevoice'
+          ? 'The program at this address is too old or is not SimpleVoice OBS. This extension needs SimpleVoice OBS 1.0.0 or newer (download page: ' + relayTextAddress() + '/releases/latest).'
+          : 'This relay is older than ' + S.RELAY_MIN_VERSION + '. This extension will not work until you update it (download page: ' + relayTextAddress() + '/releases/latest).', 'bad');
       } else if (d.updateAvailable) {
         el.className = 'status bad';
         el.textContent = 'Relay ' + d.version + '. A newer relay is available: ' + d.latest + '. ';
         var a = document.createElement('a');
-        a.href = S.RELAY_RELEASES_PAGE; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Download';
+        a.href = S.relayPage(curEngine()); a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Download';
         el.appendChild(a);
       } else {
-        setStatus(el, 'Relay version ' + d.version + '.', 'muted');
+        setStatus(el, (curEngine() === 'simplevoice' ? 'SimpleVoice OBS version ' : 'Relay version ') + d.version + '.', 'muted');
       }
     }).catch(function () { setStatus($('relayVersion'), '', 'muted'); });
   }
@@ -371,13 +407,17 @@
       .then(function () { return showRelayVersion(relay); })
       .catch(function () {
         setStatus($('relayVersion'), '', 'muted');
-        setStatus($('relayStatus'), 'Relay not reachable. Start the relay (download: github.com/eikira/VoiceStudio-OBS-Connector-Relay), or fix the address.', 'bad');
+        setStatus($('relayStatus'), (curEngine() === 'simplevoice' ? 'SimpleVoice OBS not reachable. Start SimpleVoice OBS (download: ' : 'Relay not reachable. Start the relay (download: ') + relayTextAddress() + '), or fix the address.', 'bad');
       })
       .then(function () { clearTimeout(timer); });
   }
 
-  // ---- talking to VoiceStudio -------------------------------------------------------------
-  function vsBase() { return S.trimUrl($('vsUrl').value) || S.DEFAULTS.voiceStudioUrl; }
+  // ---- talking to the engine (VoiceStudio, or SimpleVoice OBS on the relay address) -------------
+  function vsBase() {
+    return curEngine() === 'simplevoice'
+      ? (S.trimUrl($('relayUrl').value) || S.DEFAULTS.relayUrl)
+      : (S.trimUrl($('vsUrl').value) || S.DEFAULTS.voiceStudioUrl);
+  }
 
   function listFrom(data, keys) {
     if (Array.isArray(data)) return data;
@@ -399,13 +439,25 @@
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.json();
     }).then(function (data) {
-      return listFrom(data, ['voices', 'data', 'profiles']).map(function (v) {
+      return S.realVoices(listFrom(data, ['voices', 'data', 'profiles'])).map(function (v) {
         if (typeof v === 'string') return { id: v, name: v };
         var vid = pick(v, ['id', 'voice_id', 'profile_id', 'slug', 'name']);
         var name = pick(v, ['name', 'display_name', 'voice_name', 'profile_name', 'label', 'title']) || vid;
         return { id: vid, name: name };
       }).filter(function (v) { return v.id; });
     });
+  }
+
+  // A freshly loaded VoiceStudio list is the truth: pool entries saved earlier that VoiceStudio no longer lists
+  // (the fixed names alloy/ash/nova ..., deleted voices) are dropped. SimpleVoice OBS is left alone, because
+  // its list depends on which of its engines is running.
+  function setVoices(list) {
+    voices = list;
+    if (curEngine() === 'voicestudio' && list.length) {
+      Object.keys(poolSel).forEach(function (id) {
+        if (!list.some(function (v) { return v.id === id; })) { delete poolSel[id]; delete poolNames[id]; }
+      });
+    }
   }
 
   function loadVoices() {
@@ -415,11 +467,11 @@
       if (!granted) throw new Error('Permission to contact ' + vsBase() + ' was not granted.');
       return fetchVoices();
     }).then(function (list) {
-      voices = list;
+      setVoices(list);
       refreshPickers();
       setStatus($('voiceStatus'), voices.length
-        ? voices.length + ' voices loaded. Choose one in the Voice dropdown of each row.'
-        : 'VoiceStudio answered but no voices were found in the response. Choose "Custom..." in a Voice dropdown to type a name.', voices.length ? 'good' : 'muted');
+        ? voices.length + (voices.length === 1 ? ' voice' : ' voices') + ' loaded. Choose one in the Voice dropdown of each row.'
+        : engName() + ' answered but no voices were found in the response. Choose "Custom..." in a Voice dropdown to type a name.', voices.length ? 'good' : 'muted');
     }).catch(function (e) {
       setStatus($('voiceStatus'), 'Could not load voices: ' + e.message + '. You can still choose "Custom..." in a Voice dropdown and type a name.', 'bad');
     });
@@ -510,7 +562,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(S.buildPayload(cfg, result, { user: 'settings', platform: 'settings' }))
       }).catch(function () {
-        throw new Error('The relay is not reachable. Start it first (download: github.com/eikira/VoiceStudio-OBS-Connector-Relay).');
+        throw new Error((curEngine() === 'simplevoice' ? 'SimpleVoice OBS is not reachable. Start it first' : 'The relay is not reachable. Start it first') + ' (download: ' + relayTextAddress() + ').');
       });
     }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (d) {
@@ -527,40 +579,51 @@
   function save() {
     var cfg = collect();
     var problem = validate(cfg);
-    if (problem) { setStatus($('saveStatus'), problem, 'bad'); return; }
+    if (problem) { setStatus($('saveStatus'), problem, 'bad'); return Promise.resolve(false); }
     var patterns = [cfg.voiceStudioUrl, cfg.relayUrl];
-    ensurePermissions(patterns).then(function (granted) {
+    return ensurePermissions(patterns).then(function (granted) {
       if (!granted) {
         setStatus($('saveStatus'), 'Saved, but Chrome did not allow access to the non-local address. It will not work until you allow it.', 'bad');
       }
       return chrome.storage.local.set({ config: cfg }).then(function () {
         if (granted) setStatus($('saveStatus'), 'Saved.', 'good');
-        return checkRelay();
+        return checkRelay().then(function () { return true; });
       });
     }).catch(function (e) {
       setStatus($('saveStatus'), 'Could not save: ' + e.message, 'bad');
+      return false;
     });
   }
 
-  // ---- fill the page from a config (used at startup and by "Import") ---------------------
-  function fillForm(cfg) {
-    overlayId = cfg.overlayId;
-    $('enabled').checked = cfg.enabled;
-    $('relayUrl').value = cfg.relayUrl;
-    $('vsUrl').value = cfg.voiceStudioUrl;
+  // The part of the page each program keeps for itself: sections 2 (speech defaults), 3 (commands), 4 (read all chat).
+  function fillProfile(cfg) {
     $('modelPicker').textContent = '';
     modelPicker = Picker({ value: cfg.model, placeholder: 'model name', source: function () { return knownModels; } });
     $('modelPicker').appendChild(modelPicker.el);
     $('format').value = cfg.format;
     var sp = S.parseSpeed(cfg.speed);
     $('speed').value = (sp === null ? 1 : sp).toFixed(1);
+    document.querySelectorAll('#mappings .row').forEach(function (r) { r.remove(); });
+    (cfg.mappings.length ? cfg.mappings : [{ command: '', voice: '' }]).forEach(addRow);
+    fillReadAll(cfg);
+  }
+
+  // ---- fill the page from a config (used at startup and by "Import") ---------------------
+  function fillForm(cfg) {
+    cfg = S.completeProfiles(cfg);
+    profiles = cfg.profiles;
+    shownEngine = cfg.engine === 'simplevoice' ? 'simplevoice' : 'voicestudio';
+    overlayId = cfg.overlayId;
+    $('enabled').checked = cfg.enabled;
+    $('relayUrl').value = cfg.relayUrl;
+    $('engine').value = cfg.engine === 'simplevoice' ? 'simplevoice' : 'voicestudio';
+    $('vsUrl').value = cfg.voiceStudioUrl;
     $('removeCommand').checked = cfg.removeCommand;
     $('maxChars').value = cfg.maxChars;
     $('cooldown').value = cfg.cooldownSec;
     $('updateCheck').checked = cfg.updateCheck !== false;
-    document.querySelectorAll('#mappings .row').forEach(function (r) { r.remove(); });
-    (cfg.mappings.length ? cfg.mappings : [{ command: '', voice: '' }]).forEach(addRow);
-    fillReadAll(cfg);
+    fillProfile(cfg);
+    applyEngine(false);
     refreshObsUrl();
     refreshPickers();
   }
@@ -577,12 +640,12 @@
       var pad = function (n) { return (n < 10 ? '0' : '') + n; };
       var a = document.createElement('a');
       a.href = url;
-      a.download = 'voicestudio-obs-connector-settings-' + d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '.json';
+      a.download = 'voicestudio-simplevoice-obs-connector-settings-' + d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '.json';
       document.body.appendChild(a);
       a.click();
       a.remove();
       setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
-      setStatus($('backupStatus'), 'Exported ' + doc.settings.mappings.length + ' command(s). Chrome saved the file in your Downloads folder (or asked where). Keep it private: it contains your OBS ID.', 'good');
+      setStatus($('backupStatus'), 'Exported ' + (doc.settings.profiles.voicestudio.mappings.length + doc.settings.profiles.simplevoice.mappings.length) + ' command(s) (both programs). Chrome saved the file in your Downloads folder (or asked where). Keep it private: it contains your OBS ID.', 'good');
     }).catch(function (e) {
       setStatus($('backupStatus'), 'Could not export: ' + e.message, 'bad');
     });
@@ -595,10 +658,14 @@
       var r = S.parseImport(text, overlayId);
       if (!r.ok) { setStatus($('backupStatus'), r.error, 'bad'); return; }
       fillForm(r.config);
-      var msg = 'Loaded ' + r.config.mappings.length + ' command(s) from the file. Check them, then click Save to keep them.';
-      if (r.warnings.length) msg += ' Notes: ' + r.warnings.join(' ');
-      setStatus($('backupStatus'), msg, r.warnings.length ? 'muted' : 'good');
-      setStatus($('saveStatus'), 'Imported, not saved yet. Click Save.', 'bad');
+      var n = r.config.profiles.voicestudio.mappings.length + r.config.profiles.simplevoice.mappings.length;
+      var notes = r.warnings.length ? ' Notes: ' + r.warnings.join(' ') : '';
+      // An import is a restore: it is saved right away (a settings page that is only filled in does nothing, because
+      // the extension reads the saved settings). If something in the file is not valid, it stays on the page unsaved.
+      return save().then(function (saved) {
+        if (saved) setStatus($('backupStatus'), 'Imported and saved: ' + n + ' command(s) (both programs). Click "Load voices" in section 3 to refresh the voice lists.' + notes, r.warnings.length ? 'muted' : 'good');
+        else setStatus($('backupStatus'), 'Loaded ' + n + ' command(s) from the file, but they are NOT saved yet: see the message at the bottom, fix it and click Save.' + notes, 'bad');
+      });
     }, function () {
       setStatus($('backupStatus'), 'The file could not be read.', 'bad');
     });
@@ -617,18 +684,29 @@
       var fresh = !cfg.overlayId;
       if (fresh) cfg.overlayId = S.randomId();
       fillForm(cfg);
-      if (fresh) chrome.storage.local.set({ config: cfg });
-      checkRelay();
       // Quietly load the voice names so rows show names right away (needs no click).
-      fetchVoices().then(function (list) {
-        voices = list;
-        refreshPickers();
-      }, function () { /* not reachable yet: the Load button explains why */ });
+      function quietVoices() {
+        fetchVoices().then(function (list) {
+          setVoices(list);
+          refreshPickers();
+        }, function () { /* not reachable yet: the Load button explains why */ });
+      }
+      if (fresh) {
+        chrome.storage.local.set({ config: cfg });
+        // First start only: if exactly one of the two programs is running, pick it (an existing setup is never changed this way).
+        detectEngine(true).then(function (c) {
+          if (c.change) return chrome.storage.local.get('config').then(function (r) { return chrome.storage.local.set({ config: Object.assign({}, r.config || cfg, { engine: c.engine }) }); });
+        }).catch(function () {}).then(function () { checkRelay(); quietVoices(); });
+      } else {
+        checkRelay();
+        quietVoices();
+      }
     });
   }
 
-  $('version').textContent = chrome.runtime.getManifest().version;
-  $('relayUrl').addEventListener('input', refreshObsUrl);
+  $('version').textContent = chrome.runtime.getManifest().version_name || chrome.runtime.getManifest().version;
+  $('relayUrl').addEventListener('input', function () { refreshObsUrl(); showEngineAddress(); });
+  $('vsUrl').addEventListener('input', showEngineAddress);
   $('copyUrl').addEventListener('click', function () {
     navigator.clipboard.writeText($('obsUrl').value).then(function () {
       setStatus($('relayStatus'), 'URL copied.', 'good');
@@ -639,6 +717,26 @@
     overlayId = S.randomId();
     refreshObsUrl();
     setStatus($('saveStatus'), 'New ID created. Click Save, then update the URL in OBS.', 'muted');
+  });
+  // Detect: asks both programs and selects the one that answers. It never decides when both or neither answer.
+  function detectEngine(silent) {
+    var cfg = collect();
+    var el = $('engineStatus');
+    if (!silent) setStatus(el, 'Looking...', 'muted');
+    return S.probeEngines(function (u, o) { return fetch(u, o); }, cfg).then(function (found) {
+      var c = S.chooseEngine(found, cfg.engine);
+      if (c.change) { $('engine').value = c.engine; applyEngine(true); }
+      var name = S.ENGINE_NAMES[c.engine];
+      var addr = { simplevoice: S.trimUrl(cfg.relayUrl), voicestudio: S.trimUrl(cfg.voiceStudioUrl) };
+      if (c.note === 'both') setStatus(el, 'Both answer: SimpleVoice OBS at ' + addr.simplevoice + ' and VoiceStudio at ' + addr.voicestudio + '. Your choice stays: ' + name + '. Change it above if you want the other one.', 'muted');
+      else if (c.note === 'none') setStatus(el, 'Neither was found. SimpleVoice OBS at ' + S.trimUrl(cfg.relayUrl) + ': ' + found.why.simplevoice + '. VoiceStudio at ' + S.trimUrl(cfg.voiceStudioUrl) + ': ' + found.why.voicestudio + '. Start one of them (VoiceStudio can need a minute after it starts) and click Detect again, or check the addresses. Your choice stays: ' + name + '.', 'bad');
+      else setStatus(el, name + ' found at ' + addr[c.engine] + (c.change ? ' and selected. Click Save to keep it.' : '. It is already selected.'), 'good');
+      return c;
+    });
+  }
+  $('engine').addEventListener('change', function () { applyEngine(true); setStatus($('engineStatus'), 'Not saved yet. Click Save.', 'muted'); });
+  $('detectEngine').addEventListener('click', function () {
+    ensurePermissions([$('vsUrl').value, $('relayUrl').value]).then(function () { return detectEngine(false); });
   });
   $('checkRelay').addEventListener('click', checkRelay);
   $('openRelayFolder').addEventListener('click', openRelayFolder);
@@ -697,7 +795,7 @@
     chrome.storage.session.get('relayGate').then(function (r) {
       var g = r.relayGate, bad = g && g.ok === false;
       $('gate').hidden = !bad;
-      if (bad) { $('gateText').textContent = 'NOT WORKING. ' + S.relayGateMessage(g); $('gateLink').href = S.RELAY_RELEASES_PAGE; }
+      if (bad) { $('gateText').textContent = 'NOT WORKING. ' + S.relayGateMessage(g); $('gateLink').href = S.relayPage(g.engine); $('gateLink').textContent = g.engine === 'simplevoice' ? 'Download SimpleVoice OBS' : 'Download the relay'; }
     });
   }
   chrome.storage.onChanged.addListener(function (ch, area) { if (area === 'session' && ch.relayGate) showGate(); });

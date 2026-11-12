@@ -14,7 +14,7 @@
     var done = function (gate) {
       var bad = gate && gate.ok === false;
       $('gate').hidden = !bad;
-      if (bad) { $('gateText').textContent = 'NOT WORKING. ' + S.relayGateMessage(gate); $('gateLink').href = S.RELAY_RELEASES_PAGE; }
+      if (bad) { $('gateText').textContent = 'NOT WORKING. ' + S.relayGateMessage(gate); $('gateLink').href = S.relayPage(gate.engine); $('gateLink').textContent = gate.engine === 'simplevoice' ? 'Download SimpleVoice OBS' : 'Download relay'; }
     };
     if (force) {
       chrome.runtime.sendMessage({ type: 'relaycheck', force: true }, function (res) { void chrome.runtime.lastError; done(res && res.gate); });
@@ -30,6 +30,10 @@
       paint($('readAllState'), cfg.readAll ? 'on' : 'off', cfg.readAll ? 'good' : 'muted');
       var n = (cfg.mappings || []).filter(function (m) { return m.command && m.voice; }).length;
       paint($('cmds'), n ? n + ' set up' : 'none yet', n ? '' : 'bad');
+      var sv = S.isSimpleVoice(cfg);
+      $('relayLabel').textContent = sv ? 'SimpleVoice OBS' : 'Relay';
+      $('relayHintText').textContent = sv ? 'SimpleVoice OBS must be running (look for its tray icon or start it from the Start menu).' : 'The relay is a small program that must be running.';
+      $('relayHintLink').href = S.relayPage(cfg.engine);
       if (!cfg.overlayId) { paint($('relay'), 'open Settings first', 'bad'); return; }
 
       var ctrl = new AbortController();
@@ -114,7 +118,7 @@
   chrome.runtime.sendMessage({ type: 'updatecheck' }, function () { void chrome.runtime.lastError; showUpdate(); });
   showUpdate();
 
-  $('version').textContent = chrome.runtime.getManifest().version;
+  $('version').textContent = chrome.runtime.getManifest().version_name || chrome.runtime.getManifest().version;
   gateCheck(true);
   refresh();
   refreshChat();

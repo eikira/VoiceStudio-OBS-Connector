@@ -2,13 +2,13 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>VoiceStudio OBS Connector - Settings</title>
+<title>VoiceStudio+SimpleVoice OBS Connector - Settings</title>
 <link rel="stylesheet" href="ui.css">
 </head>
 <body>
 <main>
-  <h1>VoiceStudio OBS Connector <span class="muted" style="font-size:13px;font-weight:400">version <span id="version"></span></span></h1>
-  <p class="sub">Chat commands like <b>!voice hello</b> are read aloud with the VoiceStudio voice you link to that command.</p>
+  <h1>VoiceStudio+SimpleVoice OBS Connector <span class="muted" style="font-size:13px;font-weight:400">version <span id="version"></span></span></h1>
+  <p class="sub">Chat commands like <b>!voice hello</b> are read aloud with the voice you link to that command, made by <b>VoiceStudio</b> or by <b>SimpleVoice OBS</b> (you choose in section 2).</p>
 
   <div class="gate" id="gate" hidden><span id="gateText"></span> <a id="gateLink" href="#" target="_blank" rel="noopener">Download the relay</a></div>
 
@@ -27,7 +27,8 @@
     <p class="note">In OBS: Sources &rarr; + &rarr; Browser &rarr; paste this URL. No size needed; the page is invisible. Tick "Control audio via OBS" if you want it on its own mixer track.</p>
     <label for="relayUrl">Relay address</label>
     <input type="text" id="relayUrl" placeholder="http://127.0.0.1:8787">
-    <p class="note">The VoiceStudio OBS Connector Relay must be running. <a href="https://github.com/eikira/VoiceStudio-OBS-Connector-Relay/releases/latest" target="_blank" rel="noopener">Download the relay</a> (Windows, macOS, Linux). Default is this PC on port 8787.</p>
+    <p class="note vsOnly">The VoiceStudio OBS Connector Relay must be running. <a href="https://github.com/eikira/VoiceStudio-OBS-Connector-Relay/releases/latest" target="_blank" rel="noopener">Download the relay</a> (Windows, macOS, Linux). Default is this PC on port 8787.</p>
+    <p class="note svOnly"><b>No extra address needed.</b> Click <b>Load voices</b> in section 3.</p>
     <div class="status" id="relayStatus"></div>
     <div class="status" id="relayVersion"></div>
     <div class="toolbar"><button class="small" id="checkRelay">Check now</button> <button class="small" id="openRelayFolder" title="Opens the folder the relay program runs from (it must be running).">Open relay folder</button></div>
@@ -35,12 +36,29 @@
   </section>
 
   <section>
-    <h2>2. VoiceStudio</h2>
-    <label for="vsUrl">VoiceStudio address</label>
-    <input type="text" id="vsUrl" placeholder="http://127.0.0.1:3900">
-    <p class="note"><b>Default is this PC.</b> If VoiceStudio runs on another computer in your network, enter that computer's address, for example <code>http://192.168.1.20:3900</code>. Chrome will ask permission to contact it. The relay must be able to reach that address too; if OBS sees it under a different address, add <code>&amp;endpoint=http://ADDRESS:3900</code> to the end of your OBS URL.</p>
+    <h2>2. Speech engine</h2>
+    <p class="engNow">Showing the setup for <b class="engName">VoiceStudio</b>. Each program keeps its own.</p>
+    <label for="engine">Which program makes the speech?</label>
+    <div class="row-line">
+      <select id="engine" style="flex:1">
+        <option value="voicestudio">VoiceStudio</option>
+        <option value="simplevoice">SimpleVoice OBS</option>
+      </select>
+      <button class="small" id="detectEngine" title="Looks which of the two is running right now and picks it.">Detect</button>
+    </div>
+    <p class="note">Pick the one you use. <b>Detect</b> checks which one is running and selects it (it never changes your choice when both or neither answer). Sections 2, 3 and 4 are saved separately for each program: changing the engine switches between the two setups. Click <b>Load voices</b> in section 3 for the program you pick.</p>
+    <div class="status" id="engineStatus"></div>
+    <p class="note" style="margin-top:4px">Address used now: <code id="engineAddress"></code></p>
+
+    <div class="vsOnly">
+      <label for="vsUrl">VoiceStudio address</label>
+      <input type="text" id="vsUrl" placeholder="http://127.0.0.1:3900">
+      <p class="note"><b>Default is this PC.</b> If VoiceStudio runs on another computer in your network, enter that computer's address, for example <code>http://192.168.1.20:3900</code>. Chrome will ask permission to contact it. The relay must be able to reach that address too; if OBS sees it under a different address, add <code>&amp;endpoint=http://ADDRESS:3900</code> to the end of your OBS URL.</p>
+    </div>
+    <p class="note svOnly"><b>No extra address needed.</b> SimpleVoice OBS makes the speech itself, on the relay address from section 1 (<code id="svAddress"></code>). It has one model and always answers with WAV, so the model and format choices are hidden. Imported voices (made from your own recording) cannot go slower than speed 0.8; SimpleVoice OBS raises it for you. The built-in voices go down to 0.5. Your own voices only exist while the graphics card engine runs; the built-in voices only while the processor engine runs. After you switch engine in SimpleVoice OBS, click <b>Load voices</b> in section 3.</p>
+
     <div class="grid2">
-      <div>
+      <div class="vsOnly">
         <label>Default model</label>
         <div class="row-line">
           <div id="modelPicker" style="flex:1"></div>
@@ -49,33 +67,36 @@
         <p class="note">"Load" asks VoiceStudio which models it has and fills this dropdown. Choose "Custom..." to type one yourself.</p>
       </div>
       <div>
-        <label for="format">Audio format</label>
-        <select id="format">
-          <option value="wav">wav</option>
-          <option value="mp3">mp3</option>
-          <option value="flac">flac</option>
-          <option value="opus">opus</option>
-          <option value="aac">aac</option>
-        </select>
+        <div class="vsOnly">
+          <label for="format">Audio format</label>
+          <select id="format">
+            <option value="wav">wav</option>
+            <option value="mp3">mp3</option>
+            <option value="flac">flac</option>
+            <option value="opus">opus</option>
+            <option value="aac">aac</option>
+          </select>
+        </div>
         <label for="speed">Default speed</label>
         <select id="speed"></select>
         <p class="note">0.5 to 1.5. Each voice below can override it. 1.0 = normal.</p>
       </div>
     </div>
-    <p class="note"><b>VoiceStudio must be running</b> to load models and voices. VoiceStudio comes with different models (voice engines); they differ in sound, languages and voice cloning. <a href="https://voicestudio.sh/library" target="_blank" rel="noopener">See what each model does</a>.</p>
+    <p class="note vsOnly"><b>VoiceStudio must be running</b> to load models and voices. VoiceStudio comes with different models (voice engines); they differ in sound, languages and voice cloning. <a href="https://voicestudio.sh/library" target="_blank" rel="noopener">See what each model does</a>.</p>
     <div class="status" id="vsStatus"></div>
   </section>
 
   <section>
     <h2>3. Commands and voices</h2>
+    <p class="engNow">Showing the setup for <b class="engName">VoiceStudio</b>. Each program keeps its own.</p>
     <p class="note" style="margin-top:0">Commands: max <b>8 characters</b>. A <b>!</b> is added in front automatically.</p>
-    <p class="note" style="margin-top:0"><b>VoiceStudio must be running</b> to load voices and models.</p>
+    <p class="note" style="margin-top:0"><b><span class="engName">VoiceStudio</span> must be running</b> to load voices<span class="vsOnly"> and models</span>.</p>
     <div class="mappings" id="mappings">
-      <div class="head"><span>Command</span><span>Voice</span><span>Speed</span><span>Model (optional)</span><span></span></div>
+      <div class="head"><span>Command</span><span>Voice</span><span>Speed</span><span></span></div>
     </div>
     <div class="toolbar">
       <button id="addRow">+ Add command</button>
-      <button id="loadVoices">Load voices from VoiceStudio</button>
+      <button id="loadVoices">Load voices from <span class="engName">VoiceStudio</span></button>
       <button id="addAllVoices">Add all loaded voices as commands</button>
     </div>
     <p class="note">"Default" uses the settings from section 2. Test plays a sample in OBS.</p>
@@ -84,8 +105,10 @@
 
   <section id="readall">
     <h2>4. Read all chat (optional)</h2>
+    <p class="engNow">Showing the setup for <b class="engName">VoiceStudio</b>. Each program keeps its own.</p>
     <label class="inline"><input type="checkbox" id="readAll"> Read every chat line aloud, not only commands</label>
     <p class="note" style="margin-top:0">Lines starting with <b>!</b> are still commands. Needs relay 0.0.7 or newer. Chat lines are read with the voice settings below; commands keep their own voices.</p>
+    <p class="note vsOnly" style="margin-top:0">Only voices you saved in VoiceStudio are loaded here. For more random voices, create them in VoiceStudio.</p>
 
     <label>Which voice reads the chat?</label>
     <div class="radios">
@@ -98,7 +121,7 @@
       <label>Voices the randomizer may use</label>
       <div class="toolbar" style="margin-top:0"><button class="small" id="poolAll">Select all</button><button class="small" id="poolNone">Select none</button><button class="small" id="resetChatterVoices">Reset chatter voices</button></div>
       <div class="pool" id="pool"></div>
-      <p class="note">Voices come from "Load voices from VoiceStudio" in section 3.</p>
+      <p class="note">Voices come from "Load voices" in section 3.</p>
     </div>
 
     <label class="inline"><input type="checkbox" id="allSayName"> Say the chatter's name first: "Paul says: ..."</label>
@@ -153,11 +176,11 @@
     <ol class="steps">
       <li>Download the new zip from the download page above.</li>
       <li>Click <b>Show where this extension is installed</b> below. Chrome opens the details page of this extension. The folder is listed there as <b>Source</b>.</li>
-      <li>Unzip the new download so that its <b>VoiceStudio-OBS-Connector</b> folder <b>replaces the old one</b>: extract it into the folder that <i>contains</i> the old VoiceStudio-OBS-Connector folder and choose Replace (overwrite all). Or copy <b>everything inside</b> the new folder into the old one and <b>overwrite the old files</b>. Keep the same folder: another folder counts as a different extension and your settings would not come with it.</li>
+      <li>Unzip the new download so that its <b>VoiceStudio-SimpleVoice-OBS-Connector</b> folder <b>replaces the old one</b>: extract it into the folder that <i>contains</i> the old VoiceStudio-SimpleVoice-OBS-Connector folder and choose Replace (overwrite all). Or copy <b>everything inside</b> the new folder into the old one and <b>overwrite the old files</b>. Keep the same folder: another folder counts as a different extension and your settings would not come with it.</li>
       <li>On the Chrome extensions page, click the <b>reload</b> icon (circular arrow) of this extension. Your settings are kept.</li>
     </ol>
     <div class="toolbar"><button id="showWhere">Show where this extension is installed</button></div>
-    <p class="note">Or open it yourself: type <code>chrome://extensions</code> in the address bar, switch on <b>Developer mode</b>, click <b>Details</b> on VoiceStudio OBS Connector and look for <b>Source</b>. It shows the full folder path on Windows, macOS and Linux. This extension's ID is <code id="extId"></code>.</p>
+    <p class="note">Or open it yourself: type <code>chrome://extensions</code> in the address bar, switch on <b>Developer mode</b>, click <b>Details</b> on VoiceStudio+SimpleVoice OBS Connector and look for <b>Source</b>. It shows the full folder path on Windows, macOS and Linux. This extension's ID is <code id="extId"></code>.</p>
     <div class="status" id="whereStatus"></div>
   </section>
 
@@ -169,13 +192,13 @@
       <button id="importSettings">Import settings from a file...</button>
       <input type="file" id="importFile" accept=".json,application/json" hidden>
     </div>
-    <p class="note"><b>Export</b> saves what you last saved (click Save first if you just changed something). <b>Import</b> fills this page with the settings from the file, replacing what is shown; check them, then click <b>Save</b> to keep them. The file contains your addresses and your OBS ID, so keep it private.</p>
+    <p class="note"><b>Export</b> saves what you last saved (click Save first if you just changed something). <b>Import</b> replaces the settings with the ones from the file and saves them right away; then click <b>Load voices</b> in section 3. The file contains your addresses and your OBS ID, so keep it private.</p>
     <div class="status" id="backupStatus"></div>
   </section>
 
   <div class="row-line"><button class="primary" id="save">Save</button><span class="status" id="saveStatus"></span></div>
 
-  <p class="note" style="text-align:center;margin-top:28px">VoiceStudio OBS Connector is free and open source software (GPL-3.0). Free to use, share and modify. Inspired by Social Stream Ninja.</p>
+  <p class="note" style="text-align:center;margin-top:28px">VoiceStudio+SimpleVoice OBS Connector is free and open source software (GPL-3.0). Free to use, share and modify. Inspired by Social Stream Ninja.</p>
 </main>
 <script src="lib/shared.js"></script>
 <script src="options.js"></script>
